@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSS Canteen Shopkeeping App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+      <header>
+        <!-- Place this inside your <header> -->
+        <button id="menuToggle" class="menu-toggle">☰</button>
+      </header>  
+      
+    <div class="container">
+            <div id="sidebarOverlay" class="sidebar-overlay hidden"></div>
+            <!-- Sidebar navigation menu -->
+            <aside class="sidebar">
+                <h1>MSS Canteen System</h1>
+                <div>Welcome 👋</div>
+                <section id="home">
+                    <h2>Welcome to MSS Canteen Management</h2>
+                    <p>Use the navigation bellow to manage products, record sales, check stock levels, view reports, and back up your data.</p>
+                  </section>
+                  
+                  <nav>
+                    <button onclick="showSection('salesPage')">Sales</button>
+                    <button onclick="showSection('productManagementSection')">Product Management</button>
+                    <button onclick="showSection('registerProductSection')">Register Product</button>
+                    <button onclick="showSection('salesFilters')">Sales Filters</button>
+                    <button onclick="showSection('dailyExpensesSection')">Daily Expenses</button>
+                    <button onclick="showSection('expenseTypeSection')">Expense Type Register</button>
+                    <button onclick="showSection('monthlyReportSection')">Monthly Report</button>
+                    <button onclick="showSection('backupAndRestore')">Backup & Restore</button>
+                    <button onclick="showSection('expenseHistorySection')">Expense History</button>
+                  </nav>
+                  
+            </aside>
+            <!-- Sales Section -->
+            <section id="salesPage">
+                <h2>Record a Sale</h2>
+
+                <label for="productDropdown">Select Product:</label>
+                <select id="productDropdown">
+                    <option value="">Select a product</option>
+                </select>
+
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" min="1" required>
+
+                <button id="recordSaleBtn">Record Sale</button>
+                
+
+                <h2>Sales Report</h2>
+                <table id="salesReport" border="1">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Product ID</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Total Buying Price</th>
+                            <th>Total Selling Price</th>
+                            <th>Profit</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Sales data will be dynamically inserted here -->
+                    </tbody>
+                </table>
+
+                <button id="deleteSaleButton">Delete Selected Sales</button>
+            </section>
+
+            
+            <!-- Product Management Section -->
+            <section id="productManagementSection" class="hidden">
+                <h2>Manage Products</h2>
+
+                <!-- Select Product (Searchable Dropdown) -->
+                <label for="productStockDropdown">Select Product:</label>
+                <select id="productStockDropdown"></select>
+
+                <!-- Stock Quantity Input -->
+                <label for="stockQuantity">Stock Quantity:</label>
+                <input type="number" id="stockQuantity" placeholder="Enter Stock Quantity" required>
+
+                <button id="restockBtn">Restock</button>
+
+                <!-- Products in Stock Table -->
+                <h3>Products in Stock</h3>
+                <table id="productStockTable">
+                    <thead>
+                        <tr>
+                            <th>Product ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Stock Quantity</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Products will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </section>
+
+            
+            <!-- Register New Product Section -->
+            <section id="registerProductSection" class="hidden">
+                <h2>Register New Product</h2>
+
+                <label for="productId">Product ID:</label>
+                <input type="text" id="productId" oninput="this.value = this.value.toUpperCase()" placeholder="Enter Product ID (Letters & Numbers)" required>
+
+                <label for="productName">Product Name:</label>
+                <input type="text" id="productName" placeholder="Enter Product Name" required>
+
+                <label for="productCategory">Category:</label>
+                <input type="text" id="productCategory" placeholder="Enter Product Category" required>
+
+                <label for="buyingPrice">Buying Price:</label>
+                <input type="number" id="buyingPrice" placeholder="Enter Buying Price" required>
+
+                <label for="sellingPrice">Selling Price:</label>
+                <input type="number" id="sellingPrice" placeholder="Enter Selling Price" required>
+
+                <button id="addProductBtn">Add Product</button>
+
+                <!-- Product Register Table -->
+                <h3>Product Register</h3>
+                <table id="productRegister">
+                    <thead>
+                        <tr>
+                            <th>Product ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Buying Price</th>
+                            <th>Selling Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Products will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </section>
+            <!-- Sales filters -->
+            <section id="salesFilters" class="hidden">
+                <h2>Sales Filters</h2>
+
+                <label for="filterPeriod">Filter by Period:</label>
+                <select id="filterPeriod">
+                    <option value="">Select Period</option>
+                    <option value="today">Today</option>
+                    <option value="thisWeek">This Week</option>
+                    <option value="thisMonth">This Month</option>
+                    <option value="custom">Custom Date Range</option>
+                </select>
+                
+                <label for="startDate">Start Date:</label>
+                <input type="date" id="startDate" disabled>
+                
+                <label for="endDate">End Date:</label>
+                <input type="date" id="endDate" disabled>
+                
+                <label for="filterProduct">Filter by Product:</label>
+                <select id="filterProduct">
+                    <option value="">All Products</option>
+                </select>
+                
+                <label for="filterCategory">Filter by Category:</label>
+                <select id="filterCategory">
+                    <option value="">All Categories</option>
+                </select>
+                
+                <table id="salesTable">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Product ID</th>
+                            <th>Product Name</th>
+                            <th>Quantity</th>
+                            <th>Total Buying Price</th>
+                            <th>Total Selling Price</th>
+                            <th>Profit</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                
+                              
+            </section>
+
+            <!-- Expense Type Register -->
+            <section id="expenseTypeSection" class="hidden">
+                <h2>Register Expense Type</h2>
+                <input id="expenseTypeId" placeholder="Expense ID (e.g. EXP001)" />
+                <input id="expenseLabel" placeholder="Expense Label (e.g. Labour, Transport)" />
+                <button id="addExpenseTypeBtn">Add Expense Type</button>
+            
+                <h3>Expense Type Register</h3>
+                <table id="expenseTypeRegister">
+                <thead>
+                    <tr>
+                    <th>ID</th><th>Label</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                </table>
+            </section>
+                <!-- Daily Expenses -->
+            <section id="dailyExpensesSection" class="hidden">
+                <h2>Daily Expenses</h2>
+              
+                <!-- Expense input -->
+                <select id="expenseDropdown"></select>
+                <input id="expenseAmount" type="number" placeholder="Amount (Ksh)" />
+                <input id="expenseNote" placeholder="Optional Note" />
+                <button id="addExpenseBtn">Add Expense</button>
+              
+                <!-- Report table -->
+                <h3>Today's Expenses</h3>
+                <table id="dailyExpenseTable">
+                  <thead>
+                    <tr><th>Type</th><th>Amount</th><th>Note</th></tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              
+                <p><strong>Total Expenses:</strong> <span id="totalExpenses">Ksh 0.00</span></p>
+                <p><strong>Net Profit (Sales − Expenses):</strong> <span id="netProfit">Ksh 0.00</span></p>
+
+                <div id="salesTotals" style="margin-top: 1rem; font-size: 0.95rem;"></div>
+              </section>
+
+              <section id="monthlyReportSection" class="hidden">
+                <h2>Monthly Report</h2>
+              
+                <label for="reportMonth">Select Month:</label>
+                <input type="month" id="reportMonth" />
+              
+                <button id="loadMonthlyReportBtn">Load Report</button>
+                <div style="margin-top: 1rem;">
+                    <button id="printMonthlyReportBtn">🖨️ Print Report</button>
+                    <button id="exportMonthlyReportBtn">💾 Export as CSV</button>
+                </div>
+                  
+              
+                <table id="monthlyReportTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Sales</th>
+                      <th>Profit</th>
+                      <th>Expenses</th>
+                      <th>Net Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </section>
+              <!--Expense History-->
+              <section id="expenseHistorySection" class="hidden">
+                <h2>Expense History</h2>
+              
+                <label for="expenseHistoryMonth">Select Month:</label>
+                <input type="month" id="expenseHistoryMonth" />
+                <button id="loadExpenseHistoryBtn">Load Expenses</button>
+              
+                <table id="expenseHistoryTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              
+                <p><strong>Total Expenses:</strong> <span id="expenseHistoryTotal">Ksh 0.00</span></p>
+              </section>
+              
+                <!--Backup and Restore-->
+            <section id="backupAndRestore" class="hidden">
+                <h2>Backup & Restore</h2>
+                
+                <!-- Export -->
+                <button id="backupBtn">Export Backup</button>
+                
+                <!-- Import -->
+                <label for="restoreFileInput" style="display:block; margin-top: 1rem;">Import Backup:</label>
+                <input type="file" id="restoreFileInput" accept="application/json" />
+              </section>
+              
+    </div>
+    <!-- Price History Modal -->
+    <div id="priceHistoryModal" class="modal hidden">
+        <div class="modal-content">
+        <span id="closePriceHistoryModal" class="close">&times;</span>
+        <h2>Price History</h2>
+        <ul id="priceHistoryList"></ul>
+        </div>
+    </div>
+    <script src="bundle.js" defer></script>
+</body>
+</html>
