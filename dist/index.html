@@ -17,23 +17,34 @@
             <!-- Sidebar navigation menu -->
             <aside class="sidebar">
                 <h1>MSS Canteen System</h1>
-                <div>Welcome 👋</div>
                 <section id="home">
-                    <h2>Welcome to MSS Canteen Management</h2>
+                  <h2>Welcome to MSS Canteen Management 👋</h2>
                     <p>Use the navigation bellow to manage products, record sales, check stock levels, view reports, and back up your data.</p>
                   </section>
                   
                   <nav>
-                    <button onclick="showSection('salesPage')">Sales</button>
-                    <button onclick="showSection('productManagementSection')">Product Management</button>
-                    <button onclick="showSection('registerProductSection')">Register Product</button>
-                    <button onclick="showSection('salesFilters')">Sales Filters</button>
-                    <button onclick="showSection('dailyExpensesSection')">Daily Expenses</button>
-                    <button onclick="showSection('expenseTypeSection')">Expense Type Register</button>
-                    <button onclick="showSection('monthlyReportSection')">Monthly Report</button>
-                    <button onclick="showSection('backupAndRestore')">Backup & Restore</button>
-                    <button onclick="showSection('expenseHistorySection')">Expense History</button>
-                  </nav>
+                    <!-- Daily Operations -->
+                    <h4>Operations</h4>
+                    <button onclick="showSection('salesPage')">🛒 Record Sale</button>
+                    <button onclick="showSection('productManagementSection')">📦 Restock Product</button>
+                  
+                    <!-- Registers -->
+                    <h4>Registers</h4>
+                    <button onclick="showSection('registerProductSection')">📝 Register Product</button>
+                    <button onclick="showSection('expenseTypeSection')">🧾 Expense Type Register</button>
+                  
+                    <!-- Reports -->
+                    <h4>Reports</h4>
+                    <button onclick="showSection('salesFilters')">📅 Sales Reports</button>
+                    <button onclick="showSection('monthlyReportSection')">📊 Monthly Report</button>
+                    <button onclick="showSection('expenseHistorySection')">💸 Expense History</button>
+                  
+                    <!-- Utilities -->
+                    <h4>Utilities</h4>
+                    <button onclick="showSection('backupAndRestore')">💾 Backup & Restore</button>
+                    <!-- Optional: Uncomment if you want reset -->
+                    <!-- <button id="resetAppBtn">🧹 Reset App</button> -->
+                  </nav>                  
                   
             </aside>
             <!-- Sales Section -->

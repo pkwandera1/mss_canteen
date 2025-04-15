@@ -13,6 +13,7 @@ import { addExpense, loadDailyExpenseReport } from './modules/dailyExpenses.js';
 import { loadMonthlyReport } from './modules/monthlyReport.js';
 import { loadExpenseHistory } from './modules/expenseHistory.js';
 
+
 window.showSection = showSection;
 
 
@@ -62,6 +63,8 @@ document.addEventListener("DOMContentLoaded", () => {
         populateFilters(getProducts());
         loadDailyExpenseReport();
         loadExpenseTypeRegister();
+        // 👉 Navigate to Sales page after successful import
+        showSection("salesPage");
       });
     }
   });
@@ -79,26 +82,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const sidebar = document.querySelector(".sidebar");
   const overlay = document.getElementById("sidebarOverlay");
 
-  console.log({ menuToggle, sidebar, overlay });
+  if (menuToggle && sidebar && overlay) {
+    menuToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("active");
+      overlay.classList.toggle("hidden");
+    });
 
-  if (!menuToggle || !sidebar || !overlay) {
-    console.warn("❌ One or more menu elements not found!");
-    return;
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("active");
+      overlay.classList.add("hidden");
+    });
   }
 
-  console.log("✅ Menu elements found. Setting up listeners...");
-
-  menuToggle.addEventListener("click", () => {
-    console.log("☰ Menu toggled!");
-    sidebar.classList.toggle("active");
-    overlay.classList.toggle("hidden");
+  document.querySelectorAll(".sidebar button").forEach(button => {
+    button.addEventListener("click", () => {
+      const sectionId = button.getAttribute("onclick")?.match(/'([^']+)'/)?.[1];
+      if (sectionId) showSection(sectionId);
+  
+      // 👇 Close sidebar on small screens
+      if (window.innerWidth <= 768) {
+        document.querySelector(".sidebar")?.classList.remove("active");
+        document.getElementById("sidebarOverlay")?.classList.add("hidden");
+      }
+    });
   });
-
-  overlay.addEventListener("click", () => {
-    console.log("🌓 Overlay clicked!");
-    sidebar.classList.remove("active");
-    overlay.classList.add("hidden");
-  });
+  
 
   // === Monthly Report Events ===
   document.getElementById("loadMonthlyReportBtn")?.addEventListener("click", () => {
