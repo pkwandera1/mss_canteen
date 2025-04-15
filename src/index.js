@@ -13,6 +13,8 @@ import { addExpense, loadDailyExpenseReport } from './modules/dailyExpenses.js';
 import { loadMonthlyReport } from './modules/monthlyReport.js';
 import { loadExpenseHistory } from './modules/expenseHistory.js';
 
+window.showSection = showSection;
+
 
 document.addEventListener("DOMContentLoaded", () => {
   // === Initialize Data ===
@@ -77,17 +79,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const sidebar = document.querySelector(".sidebar");
   const overlay = document.getElementById("sidebarOverlay");
 
-  if (menuToggle && sidebar && overlay) {
-    menuToggle.addEventListener("click", () => {
-      sidebar.classList.toggle("active");
-      overlay.classList.toggle("hidden");
-    });
+  console.log({ menuToggle, sidebar, overlay });
 
-    overlay.addEventListener("click", () => {
-      sidebar.classList.remove("active");
-      overlay.classList.add("hidden");
-    });
+  if (!menuToggle || !sidebar || !overlay) {
+    console.warn("❌ One or more menu elements not found!");
+    return;
   }
+
+  console.log("✅ Menu elements found. Setting up listeners...");
+
+  menuToggle.addEventListener("click", () => {
+    console.log("☰ Menu toggled!");
+    sidebar.classList.toggle("active");
+    overlay.classList.toggle("hidden");
+  });
+
+  overlay.addEventListener("click", () => {
+    console.log("🌓 Overlay clicked!");
+    sidebar.classList.remove("active");
+    overlay.classList.add("hidden");
+  });
 
   // === Monthly Report Events ===
   document.getElementById("loadMonthlyReportBtn")?.addEventListener("click", () => {
