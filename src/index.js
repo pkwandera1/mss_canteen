@@ -48,6 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("restockBtn")?.addEventListener("click", restockProduct);
   document.getElementById("addExpenseTypeBtn")?.addEventListener("click", registerExpenseType);
   document.getElementById("addExpenseBtn")?.addEventListener("click", addExpense);
+  document.getElementById("saleDate").valueAsDate = new Date();
+  document.getElementById("reportDate").valueAsDate = new Date();
 
 
   // === Backup / Restore ===
@@ -107,6 +109,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
   
+  const viewReportBtn = document.getElementById("viewReportBtn");
+  if (viewReportBtn) {
+    viewReportBtn.addEventListener("click", () => {
+      loadSalesReport();
+    });
+  }
 
   // === Monthly Report Events ===
   document.getElementById("loadMonthlyReportBtn")?.addEventListener("click", () => {

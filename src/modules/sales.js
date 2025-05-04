@@ -7,14 +7,15 @@ import { loadStock } from './stock.js';
 export function recordSale() {
   const productId = document.getElementById("productDropdown").value;
   const quantity = parseInt(document.getElementById("quantity").value);
+  const saleDateInput = document.getElementById("saleDate").value;
 
   if (!productId || isNaN(quantity) || quantity <= 0) {
     alert("Invalid quantity.");
     return;
   }
 
-  let products = getProducts();
-  let sales = getSales();
+  const products = getProducts();
+  const sales = getSales();
 
   const productIndex = products.findIndex(p => p.productId === productId);
   if (productIndex === -1) {
@@ -22,12 +23,15 @@ export function recordSale() {
     return;
   }
 
-  let product = products[productIndex];
+  const product = products[productIndex];
 
   if ((product.stock || 0) < quantity) {
     alert("Insufficient stock.");
     return;
   }
+
+  const date = saleDateInput || new Date().toISOString().split("T")[0];
+  const timestamp = new Date(date).getTime() + Date.now() % 100000; // unique timestamp
 
   // Update stock and mark sale
   product.stock -= quantity;
@@ -36,7 +40,6 @@ export function recordSale() {
   saveProducts(products);
 
   // Create sale record
-  const timestamp = Date.now();
   const sale = {
     saleId: `S${timestamp}`,
     productId: product.productId,
@@ -48,7 +51,7 @@ export function recordSale() {
     totalBuyingPrice: product.buyingPrice * quantity,
     totalSellingPrice: product.sellingPrice * quantity,
     profit: (product.sellingPrice - product.buyingPrice) * quantity,
-    date: new Date().toISOString().split("T")[0], // ✅ consistent YYYY-MM-DD
+    date,
     timestamp
   };
 
@@ -56,17 +59,17 @@ export function recordSale() {
   saveSales(sales);
 
   alert("Sale recorded successfully.");
-  loadSalesReport();
+  loadSalesReport(); // reload today's report
   loadStock();
 }
 
-// Load the sales report
-export function loadSalesReport() {
+// Load the sales report for a specific date
+export function loadSalesReport(date = null) {
   const tbody = document.querySelector("#salesReport tbody");
   if (!tbody) return;
 
-  const today = new Date().toISOString().split("T")[0]; // consistent date format
-  const sales = getSales().filter(s => s.date === today);
+  const selectedDate = date || document.getElementById("reportDate")?.value || new Date().toISOString().split("T")[0];
+  const sales = getSales().filter(s => s.date === selectedDate);
 
   tbody.innerHTML = "";
 
@@ -78,7 +81,7 @@ export function loadSalesReport() {
     const row = document.createElement("tr");
 
     row.innerHTML = `
-      <td><input type="checkbox" class="sale-checkbox" value="${sale.saleId}" /></td>
+      <td><input type="checkbox" class="sale-checkbox" value="${sale.saleId}" data-id="${sale.saleId}" /></td>
       <td>${sale.productId}</td>
       <td>${sale.productName}</td>
       <td>${sale.productCategory}</td>
@@ -108,12 +111,11 @@ export function loadSalesReport() {
   tbody.appendChild(totalsRow);
 }
 
-
-// Delete sales if they’re under 2 minutes old
+// Delete selected sales (only if less than 2 minutes old)
 export function deleteSelectedSales() {
   let sales = getSales();
   const now = Date.now();
-  const selected = document.querySelectorAll(".selectSale:checked");
+  const selected = document.querySelectorAll(".sale-checkbox:checked");
 
   if (selected.length === 0) {
     alert("No sales selected.");
@@ -141,7 +143,7 @@ export function deleteSelectedSales() {
   loadStock();
 }
 
-// Optional: auto-disable sale edits
+// Optional: auto-disable old sale edits
 export function disableOldSalesEdits() {
   const sales = getSales();
   const now = Date.now();
