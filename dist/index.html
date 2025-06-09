@@ -26,6 +26,8 @@
                     <!-- Daily Operations -->
                     <h4>Operations</h4>
                     <button onclick="showSection('salesPage')">🛒 Record Sale</button>
+                    <button onclick="showSection('mpesa-section')">📲 Mpesa Payments</button>
+                    <button id="nav-credit-btn" onclick="showSection('credit-section')">💳 Credit</button>
                     <button onclick="showSection('productManagementSection')">📦 Restock Product</button>
                     <h4>Expenses</h4>
                     <button onclick="showSection('dailyExpensesSection')">Daily Expenses</button>
@@ -38,6 +40,7 @@
                     <!-- Reports -->
                     <h4>Reports</h4>
                     <button onclick="showSection('salesFilters')">📅 Sales Reports</button>
+                    <button onclick="showSection('weeklyReportSection')">📆 Weekly Report</button>
                     <button onclick="showSection('monthlyReportSection')">📊 Monthly Report</button>
                     <button onclick="showSection('expenseHistorySection')">💸 Expense History</button>
                   
@@ -90,8 +93,104 @@
 
                 <button id="deleteSaleButton">Delete Selected Sales</button>
             </section>
-
-            
+              <!--Mpesa Payments-->
+            <section id="mpesa-section"  class="hidden">
+                <h2>Mpesa Payments</h2>
+                <label for="mpesaType">Payment Type:</label>
+                <select id="mpesaType" required>
+                  <option value="" disabled selected>Payment type</option>
+                  <option value="Sale">Sale</option>
+                  <option value="Credit Payment">Credit Payment</option>
+                </select>
+                <div class="form-group">
+                  <label for="mpesaName">Name</label>
+                  <input type="text" id="mpesaName" placeholder="Enter name" />
+                </div>
+              
+                <div class="form-group">
+                  <label for="mpesaAmount">Amount (KES)</label>
+                  <input type="number" id="mpesaAmount" placeholder="Enter amount" />
+                </div>
+              
+                <button id="mpesaBtn">Record Mpesa</button>
+              
+                <div class="filters">
+                  <input type="text" id="mpesaSearch" placeholder="Search by name" />
+                  <input type="date" id="mpesaFromDate" />
+                  <input type="date" id="mpesaToDate" />
+                </div>
+              
+                <table id="mpesaTable">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Amount (KES)</th>
+                      <th>Type</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Mpesa rows will be injected here -->
+                  </tbody>
+                </table>
+            </section>                
+              
+              <!--Credit Sales-->
+            <section id="credit-section" class="hidden">
+                <h2>Credit Records</h2>
+              
+                <div class="form-group">
+                  <label for="creditName">Customer Name</label>
+                  <input type="text" id="creditCustomerName" placeholder="Enter name" />
+                </div>
+              
+                <div class="form-group">
+                  <label for="creditItem">Item Taken</label>
+                  <select id="creditProductDropdown">
+                    <option value="">Select a product</option>
+                  </select>
+                </div>
+              
+                <div class="form-group">
+                  <label for="creditAmount">Amount Owed (KES)</label>
+                  <input type="number" id="creditQuantity" placeholder="Enter total amount" />
+                </div>
+              
+                <button id="creditBtn">Record Credit</button>
+              
+                <div class="filters">
+                  <input type="text" id="creditSearch" placeholder="Search by name" />
+                  <input type="date" id="creditFromDate" />
+                  <input type="date" id="creditToDate" />
+                </div>
+              
+                <table id="creditTable">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Item</th>
+                      <th>Amount</th>
+                      <th>Paid</th>
+                      <th>Balance</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Credit rows will be injected here -->
+                  </tbody>
+                  <tfoot>
+                    <tr id="creditTotals">
+                      <!-- Totals will be injected here -->
+                    </tr>
+                  </tfoot>
+                </table>
+            </section>
+              
+              
             <!-- Product Management Section -->
             <section id="productManagementSection" class="hidden">
                 <h2>Manage Products</h2>
@@ -207,9 +306,10 @@
                         </tr>
                     </thead>
                     <tbody></tbody>
-                </table>
-                
-                              
+                    <tfoot>
+                      <tr id="creditTotals"></tr> 
+                    </tfoot>
+                </table>            
             </section>
 
             <!-- Expense Type Register -->
@@ -254,6 +354,40 @@
                 <div id="salesTotals" style="margin-top: 1rem; font-size: 0.95rem;"></div>
               </section>
 
+                <!-- Weekly Report Controls -->
+            <section id="weeklyReportSection" class="hidden">   
+              <div style="margin-bottom: 1rem;">
+                <button id="prevWeekBtn">⏮️ Previous Week</button>
+                <button id="nextWeekBtn">⏭️ Next Week</button>
+                <button id="loadWeeklyReportBtn">🔄 Load This Week</button>
+                <button id="printWeeklyReportBtn">🖨️ Print Report</button>
+                <button id="exportWeeklyReportBtn">💾 Export as CSV</button>
+              </div>
+
+              <!-- Week Range Display -->
+              <div id="weekRangeLabel" style="margin-bottom: 1rem; font-weight: bold;"></div>
+
+              <!-- Weekly Report Table -->
+              <table id="weeklyReportTable" class="report-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Total Sales</th>
+                    <th>Profit</th>
+                    <th>Expenses</th>
+                    <th>Mpesa Sales</th>
+                    <th>Credit Issued</th>
+                    <th>Credit Payments</th>
+                    <th>Mpesa Credit Payments</th>
+                    <th>Net Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Rows will be dynamically inserted by JavaScript -->
+                </tbody>
+              </table>
+            </section>
+              <!--Monthly Report-->
               <section id="monthlyReportSection" class="hidden">
                 <h2>Monthly Report</h2>
               
@@ -267,17 +401,26 @@
                 </div>
                   
               
-                <table id="monthlyReportTable">
-                  <thead>
+                <table id="monthlyReportTable" class="table table-striped table-bordered">
+                  <thead class="thead-dark">
                     <tr>
                       <th>Date</th>
-                      <th>Sales</th>
+                      <th>Total Sales</th>
                       <th>Profit</th>
                       <th>Expenses</th>
+                      <th>Mpesa Sales</th>
+                      <th>Credit Issued</th>
+                      <th>Credit Payments</th>
+                      <th>Mpesa Credit Payments</th>
                       <th>Net Profit</th>
                     </tr>
                   </thead>
-                  <tbody></tbody>
+                  <tbody>
+                    <!-- Rows will be dynamically inserted by monthlyReport.js -->
+                  </tbody>
+                  <tfoot>
+                    <!-- Totals row will be inserted by monthlyReport.js -->
+                  </tfoot>
                 </table>
               </section>
               <!--Expense History-->

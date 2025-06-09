@@ -1,4 +1,5 @@
 // src/modules/ui.js
+
 // Toggle visibility of app sections
 export function showSection(sectionId) {
     document.querySelectorAll("section").forEach(section => {
@@ -145,7 +146,6 @@ export function showSection(sectionId) {
       `;
       tbody.appendChild(row);
     });
-    
   }
   
   function canEditOrDelete(dateTaken) {
@@ -153,5 +153,5 @@ export function showSection(sectionId) {
     const taken = new Date(dateTaken);
     return (now - taken) / (1000 * 60 * 60) < 24;
   }
- 
+  
   
