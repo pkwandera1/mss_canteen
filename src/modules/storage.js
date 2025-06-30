@@ -18,7 +18,7 @@ export function saveSales(sales) {
   localStorage.setItem("sales", JSON.stringify(sales));
 }
 
-// === Mpesa Payments (Standalone) ===
+// ========== MPESA PAYMENTS ==========
 const MPESA_KEY = 'mpesaPayments';
 
 export function getMpesaPayments() {
@@ -26,16 +26,14 @@ export function getMpesaPayments() {
 }
 
 export function saveMpesaPayments(data) {
-  localStorage.setItem("mpesaPayments", JSON.stringify(data));
+  localStorage.setItem(MPESA_KEY, JSON.stringify(data));
 }
-
 
 export function saveMpesaPayment(paymentsArray) {
   localStorage.setItem(MPESA_KEY, JSON.stringify(paymentsArray));
 }
 
-
-// ---- CREDIT STORAGE ----
+// ========== CREDITS ==========
 export function getCredits() {
   const data = localStorage.getItem('credits');
   return data ? JSON.parse(data) : [];
@@ -45,7 +43,7 @@ export function saveCredits(credits) {
   localStorage.setItem('credits', JSON.stringify(credits));
 }
 
-// ========== EXPENSE TYPES (Repository) ==========
+// ========== EXPENSE TYPES ==========
 export function getExpenseTypes() {
   return JSON.parse(localStorage.getItem("expenseTypes")) || [];
 }
@@ -68,6 +66,8 @@ export function exportDataToFile() {
   const data = {
     products: getProducts(),
     sales: getSales(),
+    credits: getCredits(),
+    mpesaPayments: getMpesaPayments(),
     expenseTypes: getExpenseTypes(),
     dailyExpenses: getDailyExpenses()
   };
@@ -96,11 +96,13 @@ export function importDataFromFile(file, onSuccess = () => {}) {
         saveProducts(data.products);
         saveSales(data.sales);
 
+        if (data.credits) saveCredits(data.credits);
+        if (data.mpesaPayments) saveMpesaPayments(data.mpesaPayments);
         if (data.expenseTypes) saveExpenseTypes(data.expenseTypes);
         if (data.dailyExpenses) saveDailyExpenses(data.dailyExpenses);
 
         alert("Data imported successfully!");
-        onSuccess(); // e.g. reload tables
+        onSuccess();
       } else {
         alert("Invalid file format.");
       }
@@ -111,4 +113,3 @@ export function importDataFromFile(file, onSuccess = () => {}) {
 
   reader.readAsText(file);
 }
-

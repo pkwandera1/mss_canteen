@@ -1,10 +1,11 @@
-// mpesaPayments.js - Refactored to use centralized storage without project context
+// mpesaPayments.js
 
 import { getMpesaPayments, saveMpesaPayment } from './storage.js';
+import { getCurrentDate } from './utils.js';
+import { showToast } from './utils.js'; // make sure this is exported from utils.js
 
 let editingMpesaId = null;
 
-// In handleSaveMpesaPayment function, modify the validation and payment object:
 export function handleSaveMpesaPayment() {
   const name = document.getElementById('mpesaName').value.trim();
   const amount = parseFloat(document.getElementById('mpesaAmount').value);
@@ -20,23 +21,22 @@ export function handleSaveMpesaPayment() {
   const payments = getMpesaPayments();
 
   if (editingMpesaId) {
-    // ... existing edit logic ...
+    // Handle edit logic if needed (optional implementation)
   } else {
     const newPayment = {
       id: Date.now(),
       name,
       amount,
       type,
-      date: now.toISOString(),
-      isCreditPayment: type === 'Credit Payment' // Add this flag
+      date: getCurrentDate(),
+      isCreditPayment: type === 'Credit Payment'
     };
     payments.push(newPayment);
-    alert('Mpesa payment recorded.');
+    saveMpesaPayment(payments);
+    loadMpesaPayments();
+    clearMpesaForm(); // ✅ Clears the inputs
+    showToast(`✅ Mpesa payment of KES ${amount.toFixed(2)} recorded`);
   }
-
-  saveMpesaPayment(payments);
-  clearMpesaForm();
-  loadMpesaPayments();
 }
 
 export function loadMpesaPayments(search = '') {
@@ -65,16 +65,21 @@ export function loadMpesaPayments(search = '') {
   payments.forEach((p, index) => {
     const tr = document.createElement('tr');
     const hours = (new Date() - new Date(p.date)) / 36e5;
+
+    const canEdit = hours <= 24;
+    const actions = canEdit
+      ? `
+        <button class="editMpesaBtn" data-id="${p.id}">Edit</button>
+        <button class="deleteMpesaBtn" data-id="${p.id}">Delete</button>`
+      : ``; // leave blank if more than 24 hours
+
     tr.innerHTML = `
       <td>${index + 1}</td>
       <td>${p.name}</td>
       <td>${p.amount.toFixed(2)}</td>
       <td>${p.type || 'N/A'}</td>
       <td>${new Date(p.date).toLocaleDateString()}</td>
-      <td>
-        <button class="editMpesaBtn" data-id="${p.id}" ${hours > 24 ? 'disabled' : ''}>Edit</button>
-        <button class="deleteMpesaBtn" data-id="${p.id}" ${hours > 24 ? 'disabled' : ''}>Delete</button>
-      </td>`;
+      <td>${actions}</td>`;
     tbody.appendChild(tr);
     total += p.amount;
   });
@@ -86,26 +91,52 @@ export function loadMpesaPayments(search = '') {
   setMpesaEventListeners();
 }
 
+
 function setMpesaEventListeners() {
   const payments = getMpesaPayments();
 
   document.querySelectorAll('.editMpesaBtn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const payments = getMpesaPayments();
       const payment = payments.find(p => p.id == btn.dataset.id);
-      document.getElementById('mpesaName').value = payment.name;
-      document.getElementById('mpesaAmount').value = payment.amount;
-      document.getElementById('mpesaType').value = payment.type || 'Sale';
-      editingMpesaId = payment.id;
-      document.getElementById('mpesaBtn').textContent = 'Update Mpesa';
+      if (!payment) return;
+  
+      const newName = prompt("Edit Name:", payment.name);
+      if (!newName) return;
+  
+      const newAmountStr = prompt("Edit Amount:", payment.amount);
+      const newAmount = parseFloat(newAmountStr);
+      if (isNaN(newAmount) || newAmount <= 0) {
+        alert("Invalid amount entered.");
+        return;
+      }
+  
+      const newType = prompt("Edit Type (Sale or Credit Payment):", payment.type || "Sale");
+      if (!["Sale", "Credit Payment"].includes(newType)) {
+        alert("Invalid type. Use 'Sale' or 'Credit Payment'.");
+        return;
+      }
+  
+      // Update
+      payment.name = newName.trim();
+      payment.amount = newAmount;
+      payment.type = newType;
+  
+      saveMpesaPayment(payments);
+      loadMpesaPayments();
+      showToast("✅ Mpesa payment updated.");
     });
   });
+  
 
   document.querySelectorAll('.deleteMpesaBtn').forEach(btn => {
     btn.addEventListener('click', () => {
       const confirmDel = confirm('Are you sure you want to delete this payment?');
       if (!confirmDel) return;
+
       const updated = payments.filter(p => p.id != btn.dataset.id);
       saveMpesaPayment(updated);
+      showToast('🗑️ Mpesa payment deleted.');
       loadMpesaPayments();
     });
   });
@@ -114,6 +145,7 @@ function setMpesaEventListeners() {
 export function clearMpesaForm() {
   document.getElementById('mpesaName').value = '';
   document.getElementById('mpesaAmount').value = '';
+  document.getElementById('mpesaType').value = ''; // ✅ Resets to placeholder
   document.getElementById('mpesaBtn').textContent = 'Record Mpesa';
   editingMpesaId = null;
 }
@@ -122,6 +154,7 @@ export function setupMpesaFilters() {
   document.getElementById('mpesaSearch').addEventListener('input', e => {
     loadMpesaPayments(e.target.value);
   });
+
   document.getElementById('mpesaFromDate').addEventListener('change', () => loadMpesaPayments());
   document.getElementById('mpesaToDate').addEventListener('change', () => loadMpesaPayments());
 }

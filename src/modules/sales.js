@@ -2,46 +2,33 @@
 
 import { getProducts, saveProducts, getSales, saveSales } from './storage.js';
 import { loadStock } from './stock.js';
+import { getCurrentDate, validateDate, showToast } from './utils.js';
 
-// Record a sale
-export function recordSale() {
-  const productId = document.getElementById("productDropdown").value;
-  const quantity = parseInt(document.getElementById("quantity").value);
-  const saleDateInput = document.getElementById("saleDate").value;
-
-  if (!productId || isNaN(quantity) || quantity <= 0) {
-    alert("Invalid quantity.");
-    return;
-  }
-
+// Main function to create sale record
+export function createSaleRecord(productId, quantity, specificDate = null) {
   const products = getProducts();
   const sales = getSales();
 
-  const productIndex = products.findIndex(p => p.productId === productId);
-  if (productIndex === -1) {
-    alert("Product not found.");
-    return;
+  const product = products.find(p => p.productId === productId);
+  if (!product) throw new Error("Product not found");
+
+  if (typeof product.stock !== 'number') {
+    throw new Error("Product stock is not a valid number");
   }
 
-  const product = products[productIndex];
-
-  if ((product.stock || 0) < quantity) {
-    alert("Insufficient stock.");
-    return;
+  if (product.stock < quantity) {
+    throw new Error(`Insufficient stock. Only ${product.stock} available`);
   }
 
-  const date = saleDateInput || new Date().toISOString().split("T")[0];
-  const timestamp = new Date(date).getTime() + Date.now() % 100000; // unique timestamp
+  const saleDate = validateDate(specificDate) || getCurrentDate();
+  const timestamp = new Date(saleDate).getTime();
 
-  // Update stock and mark sale
   product.stock -= quantity;
   product.hasSale = true;
-  products[productIndex] = product;
   saveProducts(products);
 
-  // Create sale record
   const sale = {
-    saleId: `S${timestamp}`,
+    saleId: `S${timestamp}-${Math.floor(Math.random() * 1000)}`,
     productId: product.productId,
     productName: product.productName,
     productCategory: product.productCategory,
@@ -51,16 +38,46 @@ export function recordSale() {
     totalBuyingPrice: product.buyingPrice * quantity,
     totalSellingPrice: product.sellingPrice * quantity,
     profit: (product.sellingPrice - product.buyingPrice) * quantity,
-    date,
+    date: saleDate,
     timestamp
   };
 
   sales.push(sale);
   saveSales(sales);
 
-  alert("Sale recorded successfully.");
-  loadSalesReport(); // reload today's report
-  loadStock();
+  return sale;
+}
+
+// UI handler for recording sales
+export function recordSale() {
+  try {
+    const productDropdown = document.getElementById("productDropdown");
+    const quantityInput = document.getElementById("quantity");
+
+    const productId = productDropdown?.value;
+    const quantity = parseInt(quantityInput?.value);
+
+    if (!productId || isNaN(quantity)) {
+      throw new Error("Please select a product and enter valid quantity");
+    }
+
+    const sale = createSaleRecord(productId, quantity);
+
+    // Clear form inputs
+    productDropdown.value = "";
+    quantityInput.value = "";
+    productDropdown.focus();
+
+    // Refresh views
+    const selectedDate = document.getElementById("salesDate")?.value || null;
+    loadSalesReport(selectedDate);
+    loadStock();
+
+    showToast(`✅ Sale recorded for ${sale.productName} (${quantity} unit${quantity > 1 ? 's' : ''})`);
+  } catch (error) {
+    console.error("Sale recording error:", error);
+    alert(`❌ ${error.message}`);
+  }
 }
 
 // Load the sales report for a specific date
@@ -68,8 +85,10 @@ export function loadSalesReport(date = null) {
   const tbody = document.querySelector("#salesReport tbody");
   if (!tbody) return;
 
-  const selectedDate = date || document.getElementById("reportDate")?.value || new Date().toISOString().split("T")[0];
-  const sales = getSales().filter(s => s.date === selectedDate);
+  const selectedDate = date || document.getElementById("salesDate")?.value || getCurrentDate();
+  const formatDate = (dateStr) => dateStr.split("T")[0];
+
+  const sales = getSales().filter(s => formatDate(s.date) === formatDate(selectedDate));
 
   tbody.innerHTML = "";
 
@@ -77,9 +96,13 @@ export function loadSalesReport(date = null) {
   let totalSelling = 0;
   let totalProfit = 0;
 
+  if (sales.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">No sales recorded for ${formatDate(selectedDate)}</td></tr>`;
+    return;
+  }
+
   sales.forEach(sale => {
     const row = document.createElement("tr");
-
     row.innerHTML = `
       <td><input type="checkbox" class="sale-checkbox" value="${sale.saleId}" data-id="${sale.saleId}" /></td>
       <td>${sale.productId}</td>
@@ -88,9 +111,8 @@ export function loadSalesReport(date = null) {
       <td>Ksh ${sale.totalBuyingPrice.toFixed(2)}</td>
       <td>Ksh ${sale.totalSellingPrice.toFixed(2)}</td>
       <td>Ksh ${sale.profit.toFixed(2)}</td>
-      <td>${sale.date}</td>
+      <td>${formatDate(sale.date)}</td>
     `;
-
     tbody.appendChild(row);
 
     totalBuying += sale.totalBuyingPrice;
@@ -98,8 +120,8 @@ export function loadSalesReport(date = null) {
     totalProfit += sale.profit;
   });
 
-  // Append totals row
   const totalsRow = document.createElement("tr");
+  totalsRow.style.background = "#f0f0f0";
   totalsRow.innerHTML = `
     <th colspan="4">Total</th>
     <th>Ksh ${totalBuying.toFixed(2)}</th>
@@ -107,11 +129,10 @@ export function loadSalesReport(date = null) {
     <th>Ksh ${totalProfit.toFixed(2)}</th>
     <th></th>
   `;
-  totalsRow.style.background = "#f0f0f0";
   tbody.appendChild(totalsRow);
 }
 
-// Delete selected sales (only if less than 2 minutes old)
+// Delete selected sales (if less than 24 hrs old)
 export function deleteSelectedSales() {
   let sales = getSales();
   const now = Date.now();
@@ -124,34 +145,40 @@ export function deleteSelectedSales() {
 
   if (!confirm("Are you sure you want to delete the selected sales?")) return;
 
+  let deletedCount = 0;
   selected.forEach(checkbox => {
     const saleId = checkbox.getAttribute("data-id");
-    const index = sales.findIndex(s => s.saleId === saleId);
+    const index = sales.findIndex(s => String(s.saleId) === String(saleId));
 
     if (index !== -1) {
       const sale = sales[index];
-      if (now - sale.timestamp <= 120000) {
+      const ageInHours = (now - sale.timestamp) / (1000 * 60 * 60);
+
+      if (ageInHours <= 24) {
         sales.splice(index, 1);
+        deletedCount++;
       } else {
-        alert(`Sale "${sale.productName}" is older than 2 minutes and cannot be deleted.`);
+        alert(`Sale "${sale.productName}" is older than 24 hours and cannot be deleted.`);
       }
     }
   });
 
-  saveSales(sales);
-  loadSalesReport();
-  loadStock();
+  if (deletedCount > 0) {
+    saveSales(sales);
+    const selectedDate = document.getElementById("salesDate")?.value || null;
+    loadSalesReport(selectedDate);
+    loadStock();
+    showToast(`🗑️ ${deletedCount} sale(s) deleted`);
+  }
 }
 
-// Optional: auto-disable old sale edits
+// Optional: Mark sales as editable if within 24 hrs
 export function disableOldSalesEdits() {
   const sales = getSales();
   const now = Date.now();
 
   sales.forEach(sale => {
-    if (now - sale.timestamp > 120000) {
-      sale.editable = false;
-    }
+    sale.editable = (now - sale.timestamp) <= 24 * 60 * 60 * 1000;
   });
 
   saveSales(sales);

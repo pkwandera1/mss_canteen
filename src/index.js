@@ -15,10 +15,14 @@ import { loadExpenseHistory } from './modules/expenseHistory.js';
 import {handleSaveMpesaPayment, loadMpesaPayments, setupMpesaFilters } from './modules/mpesa.js';
 import { initCreditModule,} from './modules/credit.js';
 import {generateWeeklyReport, renderWeeklyReportTable, exportWeeklyReportToCSV, printWeeklyReportTable} from './modules/weeklyReport.js';
+import { initGlobalDateControl, getCurrentDate } from './modules/utils.js';
 
 window.showSection = showSection;
 
 document.addEventListener("DOMContentLoaded", () => {
+  //=== Global Date COntrol ====
+    initGlobalDateControl();
+
   // === Initialize Data ===
   const products = getProducts();
   updateProductRegisterTable();
@@ -49,7 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("restockBtn")?.addEventListener("click", restockProduct);
   document.getElementById("addExpenseTypeBtn")?.addEventListener("click", registerExpenseType);
   document.getElementById("addExpenseBtn")?.addEventListener("click", addExpense);
-  document.getElementById("saleDate").valueAsDate = new Date();
   document.getElementById("reportDate").valueAsDate = new Date();
   document.getElementById('mpesaBtn').addEventListener('click', handleSaveMpesaPayment);
 
@@ -109,13 +112,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-  
+  // === View Sales Report ===
   const viewReportBtn = document.getElementById("viewReportBtn");
-  if (viewReportBtn) {
-    viewReportBtn.addEventListener("click", () => {
-      loadSalesReport();
-    });
-  }
+if (viewReportBtn) {
+  viewReportBtn.addEventListener("click", () => {
+    const selectedDate = document.getElementById("reportDate")?.value || null;
+    loadSalesReport(selectedDate);
+  });
+}
+
 
   // === Monthly Report Events ===
   document.getElementById("loadMonthlyReportBtn")?.addEventListener("click", () => {
