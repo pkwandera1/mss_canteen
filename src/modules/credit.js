@@ -111,7 +111,7 @@ function recordNewCredit() {
       payments: []
     };
 
-    createSaleRecord(product.productId, 1, credit.dateTaken);
+    //createSaleRecord(product.productId, 1, credit.dateTaken);
 
     const credits = getCredits();
     credits.push(credit);

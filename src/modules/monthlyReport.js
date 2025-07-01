@@ -14,12 +14,9 @@ function getDaysInMonth(year, month) {
 function safeDateParse(dateString) {
   if (!dateString) return null;
 
-  // Try ISO format first
   let date = new Date(dateString);
   if (!isNaN(date.getTime())) return date;
 
-  // Try common alternative formats
-  // Format 1: "YYYY-MM-DD"
   const isoParts = dateString.split('-');
   if (isoParts.length === 3) {
     date = new Date(
@@ -30,7 +27,6 @@ function safeDateParse(dateString) {
     if (!isNaN(date.getTime())) return date;
   }
 
-  // Format 2: "DD/MM/YYYY"
   const slashParts = dateString.split('/');
   if (slashParts.length === 3) {
     date = new Date(
@@ -41,7 +37,6 @@ function safeDateParse(dateString) {
     if (!isNaN(date.getTime())) return date;
   }
 
-  // Format 3: Timestamp (number)
   if (!isNaN(dateString)) {
     date = new Date(parseInt(dateString));
     if (!isNaN(date.getTime())) return date;
@@ -50,25 +45,18 @@ function safeDateParse(dateString) {
   return null;
 }
 
-// Main report generation function
 export function loadMonthlyReport(year, month) {
   const tbody = document.querySelector("#monthlyReportTable tbody");
-  if (!tbody) {
-    console.error("Monthly report table body not found");
-    return;
-  }
+  if (!tbody) return;
 
-  // Clear existing content
   tbody.innerHTML = "";
 
-  // Load all data
   const sales = getSales();
   const expenses = getDailyExpenses();
   const mpesaPayments = getMpesaPayments();
   const credits = getCredits();
   const daysInMonth = getDaysInMonth(year, month);
 
-  // Initialize totals
   let totals = {
     sales: 0,
     profit: 0,
@@ -80,12 +68,10 @@ export function loadMonthlyReport(year, month) {
     netProfit: 0
   };
 
-  // Process each day of the month
   for (let day = 1; day <= daysInMonth; day++) {
     const dateKey = formatDate(year, month, day);
     let hasData = false;
 
-    // Calculate daily amounts with fallbacks
     const dailyAmounts = {
       sales: 0,
       profit: 0,
@@ -96,7 +82,6 @@ export function loadMonthlyReport(year, month) {
       mpesaCreditPayments: 0
     };
 
-    // Helper function to filter by date
     const filterByDate = (items, dateField = 'date') => {
       return items.filter(item => {
         const d = safeDateParse(item[dateField]);
@@ -104,30 +89,23 @@ export function loadMonthlyReport(year, month) {
       });
     };
 
-    // Process sales
     const daySales = filterByDate(sales);
     dailyAmounts.sales = daySales.reduce((sum, s) => sum + (s.totalSellingPrice || 0), 0);
     dailyAmounts.profit = daySales.reduce((sum, s) => sum + (s.profit || 0), 0);
     hasData = hasData || daySales.length > 0;
 
-    // Process expenses
     const dayExpenses = filterByDate(expenses);
     dailyAmounts.expenses = dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     hasData = hasData || dayExpenses.length > 0;
 
-    // Process Mpesa payments (both sales and credit payments)
     const dayMpesa = filterByDate(mpesaPayments);
     dailyAmounts.mpesaSales = dayMpesa.reduce((sum, m) => sum + (m.amount || 0), 0);
     hasData = hasData || dayMpesa.length > 0;
 
-    // Process credits
-    const dayCredits = filterByDate(credits, 'dateTaken');
-    
-    // Credit issued is the amount of new credits created that day
-    dailyAmounts.creditIssued = dayCredits.reduce((sum, c) => sum + (c.amount || 0), 0);
-    
-    // Credit payments (all types combined)
-    dayCredits.forEach(credit => {
+    const dayCreditsIssued = filterByDate(credits, 'dateTaken');
+    dailyAmounts.creditIssued = dayCreditsIssued.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+    credits.forEach(credit => {
       credit.payments.forEach(payment => {
         const paymentDate = safeDateParse(payment.date);
         if (paymentDate && paymentDate.toISOString().split("T")[0] === dateKey) {
@@ -135,18 +113,15 @@ export function loadMonthlyReport(year, month) {
         }
       });
     });
-    
-    // Mpesa credit payments (from mpesaPayments with credit flag)
+
     dailyAmounts.mpesaCreditPayments = dayMpesa
       .filter(m => m.type === 'Credit Payment')
       .reduce((sum, m) => sum + (m.amount || 0), 0);
-    
-    hasData = hasData || dayCredits.length > 0 || dayMpesa.some(m => m.isCreditPayment);
 
-    // Calculate net profit
+    hasData = hasData || dailyAmounts.creditIssued > 0 || dailyAmounts.creditPayments > 0;
+
     const net = dailyAmounts.profit - dailyAmounts.expenses;
 
-    // Add row if there's data for this day
     if (hasData) {
       const row = document.createElement("tr");
       row.innerHTML = `
@@ -163,7 +138,6 @@ export function loadMonthlyReport(year, month) {
       tbody.appendChild(row);
     }
 
-    // Update totals
     totals.sales += dailyAmounts.sales;
     totals.profit += dailyAmounts.profit;
     totals.expenses += dailyAmounts.expenses;
@@ -174,7 +148,6 @@ export function loadMonthlyReport(year, month) {
     totals.netProfit += net;
   }
 
-  // Add summary row
   const summaryRow = document.createElement("tr");
   summaryRow.innerHTML = `
     <th>Total</th>
@@ -189,4 +162,53 @@ export function loadMonthlyReport(year, month) {
   `;
   summaryRow.classList.add("summary-row");
   tbody.appendChild(summaryRow);
+}
+
+export function exportMonthlyReportToCSV(month, year) {
+  const reportRows = Array.from(document.querySelectorAll("#monthlyReportTable tbody tr"));
+  const csv = [
+    ["Date", "Total Sales", "Profit", "Expenses", "Mpesa Sales", "Credit Issued", "Credit Payments", "Mpesa Credit Payments", "Net Profit"]
+  ];
+
+  reportRows.forEach(row => {
+    const cols = Array.from(row.querySelectorAll("td, th"));
+    csv.push(cols.map(cell => cell.innerText.replace("Ksh ", "")));
+  });
+
+  const blob = new Blob([csv.map(r => r.join(",")).join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `monthly_report_${year}_${String(month).padStart(2, "0")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function printMonthlyReportTable() {
+  const table = document.getElementById("monthlyReportTable").outerHTML;
+  const style = `
+    <style>
+      body { font-family: Arial, sans-serif; }
+      table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+      .summary-row { font-weight: bold; background-color: #f8f8f8; }
+    </style>
+  `;
+
+  const win = window.open("", "_blank");
+  win.document.write(`
+    <html>
+      <head>
+        <title>Monthly Report</title>
+        ${style}
+      </head>
+      <body>
+        <h1>Monthly Sales Report</h1>
+        ${table}
+      </body>
+    </html>
+  `);
+  win.print();
+  win.close();
 }

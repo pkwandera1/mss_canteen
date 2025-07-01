@@ -17,15 +17,11 @@ function formatDate(date) {
   return date.toISOString().split('T')[0];
 }
 
-// Robust date parser that handles multiple formats
 function safeDateParse(dateString) {
   if (!dateString) return null;
-  
-  // Try ISO format first
   let date = new Date(dateString);
   if (!isNaN(date.getTime())) return date;
 
-  // Try common alternative formats
   const parts = dateString.split(/[-/]/);
   if (parts.length === 3) {
     date = new Date(
@@ -58,50 +54,42 @@ export function generateWeeklyReport(offset = 0) {
   const credits = getCredits();
 
   const report = dates.map(date => {
-    // Helper function to filter by date
     const filterByDate = (items, dateField = 'date') => {
       return items.filter(item => {
         const d = safeDateParse(item[dateField]);
-        return d ? d.toISOString().split("T")[0] === date : false;
+        return d ? formatDate(d) === date : false;
       });
     };
-    
-    // Process sales
+
     const daySales = filterByDate(sales);
     const salesTotal = daySales.reduce((sum, s) => sum + (s.totalSellingPrice || 0), 0);
     const profit = daySales.reduce((sum, s) => sum + (s.profit || 0), 0);
 
-    // Process expenses
     const dayExpenses = filterByDate(expenses);
     const expensesTotal = dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    // Process Mpesa payments
     const dayMpesa = filterByDate(mpesaPayments);
     const mpesaSales = dayMpesa
       .filter(m => !m.isCreditPayment)
       .reduce((sum, m) => sum + (m.amount || 0), 0);
 
-    // Process credits
-    const dayCredits = filterByDate(credits, 'dateTaken');
-    const creditTotal = dayCredits.reduce((sum, c) => sum + (c.amount || 0), 0);
-    
-    // Credit payments (all types)
+    const creditIssuedToday = filterByDate(credits, 'dateTaken');
+    const creditTotal = creditIssuedToday.reduce((sum, c) => sum + (c.amount || 0), 0);
+
     let creditPayments = 0;
-    dayCredits.forEach(credit => {
+    credits.forEach(credit => {
       credit.payments.forEach(payment => {
         const paymentDate = safeDateParse(payment.date);
-        if (paymentDate && paymentDate.toISOString().split("T")[0] === date) {
+        if (paymentDate && formatDate(paymentDate) === date) {
           creditPayments += payment.amount || 0;
         }
       });
     });
-    
-    // Mpesa credit payments
+
     const mpesaCreditPayments = dayMpesa
       .filter(m => m.isCreditPayment)
       .reduce((sum, m) => sum + (m.amount || 0), 0);
 
-    // Net profit
     const netProfit = profit - expensesTotal;
 
     return {
@@ -114,8 +102,13 @@ export function generateWeeklyReport(offset = 0) {
       creditPayments,
       mpesaCreditPayments,
       netProfit,
-      hasData: salesTotal > 0 || expensesTotal > 0 || mpesaSales > 0 || 
-               creditTotal > 0 || creditPayments > 0 || mpesaCreditPayments > 0
+      hasData:
+        salesTotal > 0 ||
+        expensesTotal > 0 ||
+        mpesaSales > 0 ||
+        creditTotal > 0 ||
+        creditPayments > 0 ||
+        mpesaCreditPayments > 0
     };
   });
 
@@ -125,7 +118,7 @@ export function generateWeeklyReport(offset = 0) {
 export function renderWeeklyReportTable(report) {
   const tbody = document.querySelector("#weeklyReportTable tbody");
   if (!tbody) return;
-  
+
   tbody.innerHTML = "";
 
   let totals = {
@@ -186,35 +179,18 @@ export function renderWeeklyReportTable(report) {
   }
 }
 
-// Update exportWeeklyReportToCSV and printWeeklyReportTable to match the new columns
+// ======= ADD THESE AT THE END OF weeklyReport.js =======
+
 export function exportWeeklyReportToCSV(report) {
   const headers = [
-    "Date", "Total Sales", "Profit", "Expenses", "Mpesa Sales", 
+    "Date", "Total Sales", "Profit", "Expenses", "Mpesa Sales",
     "Credit Issued", "Credit Payments", "Mpesa Credit Payments", "Net Profit"
   ];
 
-  const totals = {
-    salesTotal: 0,
-    profit: 0,
-    expensesTotal: 0,
-    mpesaSales: 0,
-    creditTotal: 0,
-    creditPayments: 0,
-    mpesaCreditPayments: 0,
-    netProfit: 0
-  };
+  const csvRows = [headers];
 
-  const rows = report.map(day => {
-    totals.salesTotal += day.salesTotal || 0;
-    totals.profit += day.profit || 0;
-    totals.expensesTotal += day.expensesTotal || 0;
-    totals.mpesaSales += day.mpesaSales || 0;
-    totals.creditTotal += day.creditTotal || 0;
-    totals.creditPayments += day.creditPayments || 0;
-    totals.mpesaCreditPayments += day.mpesaCreditPayments || 0;
-    totals.netProfit += day.netProfit || 0;
-
-    return [
+  report.forEach(day => {
+    csvRows.push([
       day.date,
       day.salesTotal.toFixed(2),
       day.profit.toFixed(2),
@@ -224,12 +200,32 @@ export function exportWeeklyReportToCSV(report) {
       day.creditPayments.toFixed(2),
       day.mpesaCreditPayments.toFixed(2),
       day.netProfit.toFixed(2)
-    ];
+    ]);
   });
 
-  // Add totals row
-  const totalsRow = [
-    "Total",
+  // Add totals
+  const totals = report.reduce((acc, day) => ({
+    salesTotal: acc.salesTotal + day.salesTotal,
+    profit: acc.profit + day.profit,
+    expensesTotal: acc.expensesTotal + day.expensesTotal,
+    mpesaSales: acc.mpesaSales + day.mpesaSales,
+    creditTotal: acc.creditTotal + day.creditTotal,
+    creditPayments: acc.creditPayments + day.creditPayments,
+    mpesaCreditPayments: acc.mpesaCreditPayments + day.mpesaCreditPayments,
+    netProfit: acc.netProfit + day.netProfit,
+  }), {
+    salesTotal: 0,
+    profit: 0,
+    expensesTotal: 0,
+    mpesaSales: 0,
+    creditTotal: 0,
+    creditPayments: 0,
+    mpesaCreditPayments: 0,
+    netProfit: 0
+  });
+
+  csvRows.push([
+    "TOTAL",
     totals.salesTotal.toFixed(2),
     totals.profit.toFixed(2),
     totals.expensesTotal.toFixed(2),
@@ -238,16 +234,16 @@ export function exportWeeklyReportToCSV(report) {
     totals.creditPayments.toFixed(2),
     totals.mpesaCreditPayments.toFixed(2),
     totals.netProfit.toFixed(2)
-  ];
+  ]);
 
-  const csv = [headers, ...rows, totalsRow].map(row => row.join(",")).join("\n");
+  const csv = csvRows.map(row => row.join(",")).join("\n");
 
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = `weekly_report_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `weekly_report_${new Date().toISOString().split("T")[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -263,7 +259,7 @@ export function printWeeklyReportTable() {
       .summary-row { font-weight: bold; background-color: #f8f8f8; }
     </style>
   `;
-  
+
   const win = window.open("", "_blank");
   win.document.write(`
     <html>
