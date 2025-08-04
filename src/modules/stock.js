@@ -1,27 +1,40 @@
 // src/modules/stock.js
 
-import { getProducts, saveProducts } from './storage.js';
+import { getProducts, saveProducts, getDailyExpenses, saveDailyExpenses } from './storage.js';
 import { updateProductRegisterTable } from './products.js';
+import { getCurrentDate, showError, showToast } from './utils.js';
+import { refreshUI } from './ui.js';
+
 
 // Restock a product
 export function restockProduct() {
-  const productId = document.getElementById("productStockDropdown").value;
-  const stockQuantity = parseInt(document.getElementById("stockQuantity").value);
+  const productIdInput = document.getElementById("productStockDropdown");
+  const stockQuantityInput = document.getElementById("stockQuantity");
+
+  const productId = productIdInput?.value;
+  const stockQuantity = parseInt(stockQuantityInput?.value);
 
   if (!productId || isNaN(stockQuantity) || stockQuantity <= 0) {
-    alert("Invalid stock quantity.");
+    showError("Please select a valid product and enter a valid stock quantity.");
     return;
   }
 
-  let products = getProducts();
-  let product = products.find(p => p.productId === productId);
+  const products = getProducts();
+  const product = products.find(p => p.productId === productId);
 
-  if (product) {
-    product.stock = (product.stock || 0) + stockQuantity;
-    saveProducts(products);
-    alert("Product restocked successfully.");
-    loadStock();
+  if (!product) {
+    showError("Product not found.");
+    return;
   }
+
+  product.stock = (product.stock || 0) + stockQuantity;
+  saveProducts(products);
+  recordRestockingExpense(product, stockQuantity);
+
+  showToast("Product restocked successfully.");
+  refreshUI();
+  stockQuantityInput.value = ""; // Clear input
+  loadStock();
 }
 
 // Load stock table
@@ -49,29 +62,33 @@ export function loadStock() {
 
   document.querySelectorAll(".edit-stock-btn").forEach(button => {
     const productId = button.getAttribute("data-id");
-  
+
     button.addEventListener("click", () => {
       const products = getProducts();
       const product = products.find(p => p.productId === productId);
-  
+
       if (product?.hasSale) {
-        alert("Editing stock is disabled for products that have already been sold.");
+        showError("Editing stock is disabled for products that have already been sold.");
         return;
       }
-  
+
       editStock(productId);
     });
   });
-  
 }
 
 // Edit stock manually (if no sale exists)
 export function editStock(productId) {
-  let products = getProducts();
-  let product = products.find(p => p.productId === productId);
+  const products = getProducts();
+  const product = products.find(p => p.productId === productId);
+
+  if (!product) {
+    showError("Product not found.");
+    return;
+  }
 
   if (product.hasSale) {
-    alert("Editing stock is disabled after sales begin.");
+    showError("Editing stock is disabled after sales begin.");
     return;
   }
 
@@ -82,8 +99,9 @@ export function editStock(productId) {
     saveProducts(products);
     loadStock();
     updateProductRegisterTable(); // Optional sync
+    showToast("Stock updated successfully.");
   } else {
-    alert("Invalid stock value.");
+    showError("Invalid stock value.");
   }
 }
 
@@ -94,4 +112,19 @@ export function setupRestockShortcut() {
   stockInput.addEventListener("keypress", event => {
     if (event.key === "Enter") restockProduct();
   });
+}
+
+// Record restocking as an expense
+function recordRestockingExpense(product, quantity) {
+  const allExpenses = getDailyExpenses();
+  const expense = {
+    id: `EXP${Date.now()}`,
+    date: getCurrentDate(),
+    expenseTypeId: 'RESTOCKING',
+    amount: product.buyingPrice * quantity,
+    note: `Restocked ${quantity} of ${product.productName}`
+  };
+
+  allExpenses.push(expense);
+  saveDailyExpenses(allExpenses);
 }

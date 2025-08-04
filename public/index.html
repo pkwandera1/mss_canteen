@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
     <title>MSS Canteen Shopkeeping App</title>
 </head>
 <body>
@@ -17,14 +18,17 @@
             <!-- Sidebar navigation menu -->
             <aside class="sidebar">
                 <h1>MSS Canteen System</h1>
-                <section id="home">
-                  <h2>Welcome to MSS Canteen Management 👋</h2>
-                    <p>Use the navigation bellow to manage products, record sales, check stock levels, view reports, and back up your data.</p>
-                  </section>
-                  
-                  <nav>
+                <nav>
                     <!-- Daily Operations -->
-                    <h4>Operations</h4>
+                      <h4>Operations</h4>
+                      <div id="help-icon" title="Help">?</div>
+                    <div id="globalDateControl" class="date-control">
+                      <label for="globalDateInput">📅 Working Date</label>
+                      <input type="date" id="globalDateInput" />
+                      <button id="resetDateBtn" style="display:none;">Reset to Today</button>
+                    </div>
+
+
                     <button onclick="showSection('salesPage')">🛒 Record Sale</button>
                     <button onclick="showSection('mpesa-section')">📲 Mpesa Payments</button>
                     <button id="nav-credit-btn" onclick="showSection('credit-section')">💳 Credit</button>
@@ -49,25 +53,27 @@
                     <button onclick="showSection('backupAndRestore')">💾 Backup & Restore</button>
                     <!-- Optional: Uncomment if you want reset -->
                     <!-- <button id="resetAppBtn">🧹 Reset App</button> -->
-                  </nav>                  
-                  
+                    <p id="app-version" class="sidebar-footer"></p> 
+                  </nav>    
             </aside>
             <!-- Sales Section -->
             <section id="salesPage">
                 <h2>Record a Sale</h2>
-                <label for="productDropdown">Select Product:</label>
-                <select id="productDropdown">
-                    <option value="">Select a product</option>
-                </select>
-
-                <label for="quantity">Quantity:</label>
-                <input type="number" id="quantity" min="1" required>
-
-                <button id="recordSaleBtn">Record Sale</button>
+                <div class="record-entry">
+                  <label for="productDropdown">Select Product:</label>
+                  <select id="productDropdown">
+                      <option value="">Select a product</option>
+                  </select>
+                  <label for="quantity">Quantity:</label>
+                  <input type="number" id="quantity" min="1" required>
+                  <button id="recordSaleBtn">Record Sale</button>
+                </div>
+                <div class="report-control">
+                  <label for="reportDate">Report Date:</label>
+                  <input type="date" id="reportDate" />
+                  <button id="viewReportBtn">View Report</button>
+                </div>
                 
-                <label for="reportDate">Report Date:</label>
-                <input type="date" id="reportDate" />
-                <button id="viewReportBtn">View Report</button>
                 <h2>Sales Report</h2>
                 <table id="salesReport" border="1">
                     <thead>
@@ -92,26 +98,27 @@
               <!--Mpesa Payments-->
             <section id="mpesa-section"  class="hidden">
                 <h2>Mpesa Payments</h2>
-                <label for="mpesaType">Payment Type:</label>
-                <select id="mpesaType" required>
-                  <option value="" disabled selected>Payment type</option>
-                  <option value="Sale">Sale</option>
-                  <option value="Credit Payment">Credit Payment</option>
-                </select>
-                <div class="form-group">
-                  <label for="mpesaName">Name</label>
-                  <input type="text" id="mpesaName" placeholder="Enter name" />
+                <div class="record-entry">
+                  <label for="mpesaType">Payment Type:</label>
+                  <select id="mpesaType" required>
+                    <option value="" disabled selected>Payment type</option>
+                    <option value="Sale">Sale</option>
+                    <option value="Credit Payment">Credit Payment</option>
+                  </select>
+                    <label for="mpesaName">Name</label>
+                    <input list="mpesaNameList" id="mpesaName" placeholder="Enter or select client name" />
+                    <datalist id="mpesaNameList"></datalist>
+
+                    <label for="mpesaAmount">Amount (KES)</label>
+                    <input type="number" id="mpesaAmount" placeholder="Enter amount" />
+                  
+                
+                  <button id="mpesaBtn">Record Mpesa</button>
                 </div>
-              
-                <div class="form-group">
-                  <label for="mpesaAmount">Amount (KES)</label>
-                  <input type="number" id="mpesaAmount" placeholder="Enter amount" />
-                </div>
-              
-                <button id="mpesaBtn">Record Mpesa</button>
-              
-                <div class="filters">
-                  <input type="text" id="mpesaSearch" placeholder="Search by name" />
+
+                <div class="report-control">
+                  <input list="mpesaSearchList" id="mpesaSearch" placeholder="Search by client name" />
+                  <datalist id="mpesaSearchList"></datalist>
                   <input type="date" id="mpesaFromDate" />
                   <input type="date" id="mpesaToDate" />
                 </div>
@@ -137,27 +144,24 @@
             <section id="credit-section" class="hidden">
                 <h2>Credit Records</h2>
               
-                <div class="form-group">
-                  <label for="creditName">Customer Name</label>
-                  <input type="text" id="creditCustomerName" placeholder="Enter name" />
-                </div>
-              
-                <div class="form-group">
+                <div class="record-entry">
+                  <label for="creditCustomerName">Customer Name</label>
+                  <input list="clientList" id="creditCustomerName" placeholder="Enter or select customer" />
+                  <datalist id="clientList"></datalist>
                   <label for="creditItem">Item Taken</label>
                   <select id="creditProductDropdown">
                     <option value="">Select a product</option>
                   </select>
-                </div>
-              
-                <div class="form-group">
                   <label for="creditAmount">Amount Owed (KES)</label>
                   <input type="number" id="creditQuantity" placeholder="Enter total amount" />
+                  
+                  <button id="creditBtn">Record Credit</button>
                 </div>
               
-                <button id="creditBtn">Record Credit</button>
-              
-                <div class="filters">
-                  <input type="text" id="creditSearch" placeholder="Search by name" />
+                <div class="report-control">
+                  <label for="creditSearch">Search by Customer</label>
+                  <input list="filterClientList" id="creditSearch" placeholder="Type or select a name to filter" />
+                  <datalist id="filterClientList"></datalist>
                   <input type="date" id="creditFromDate" />
                   <input type="date" id="creditToDate" />
                 </div>
@@ -184,6 +188,7 @@
                     </tr>
                   </tfoot>
                 </table>
+                <div class="print-export-report"><button id="printFilteredCreditsBtn">🖨️ Print Client Debts</button></div>
             </section>
               
               
@@ -191,15 +196,15 @@
             <section id="productManagementSection" class="hidden">
                 <h2>Manage Products</h2>
 
-                <!-- Select Product (Searchable Dropdown) -->
-                <label for="productStockDropdown">Select Product:</label>
-                <select id="productStockDropdown"></select>
-
-                <!-- Stock Quantity Input -->
-                <label for="stockQuantity">Stock Quantity:</label>
-                <input type="number" id="stockQuantity" placeholder="Enter Stock Quantity" required>
-
-                <button id="restockBtn">Restock</button>
+                <div class="record-entry">
+                  <!-- Select Product (Searchable Dropdown) -->
+                  <label for="productStockDropdown">Select Product:</label>
+                  <select id="productStockDropdown"></select>
+                  <!-- Stock Quantity Input -->
+                  <label for="stockQuantity">Stock Quantity:</label>
+                  <input type="number" id="stockQuantity" placeholder="Enter Stock Quantity" required>
+                  <button id="restockBtn">Restock</button>
+                </div>
 
                 <!-- Products in Stock Table -->
                 <h3>Products in Stock</h3>
@@ -223,23 +228,26 @@
             <!-- Register New Product Section -->
             <section id="registerProductSection" class="hidden">
                 <h2>Register New Product</h2>
+                <div class="record-entry">
+                  <label for="productId">Product ID:</label>
+                  <input type="text" id="productId" oninput="this.value = this.value.toUpperCase()" placeholder="Enter Product ID (Letters & Numbers)" required>
+                  
+                  <label for="productName">Product Name:</label>
+                  <input type="text" id="productName" placeholder="Enter Product Name" required>
+                  
+                  <label for="productCategory">Category:</label>
+                  <input list="productCategoryList" id="productCategory" placeholder="Enter or select category" required>
+                  <datalist id="productCategoryList"></datalist>
 
-                <label for="productId">Product ID:</label>
-                <input type="text" id="productId" oninput="this.value = this.value.toUpperCase()" placeholder="Enter Product ID (Letters & Numbers)" required>
-
-                <label for="productName">Product Name:</label>
-                <input type="text" id="productName" placeholder="Enter Product Name" required>
-
-                <label for="productCategory">Category:</label>
-                <input type="text" id="productCategory" placeholder="Enter Product Category" required>
-
-                <label for="buyingPrice">Buying Price:</label>
-                <input type="number" id="buyingPrice" placeholder="Enter Buying Price" required>
-
-                <label for="sellingPrice">Selling Price:</label>
-                <input type="number" id="sellingPrice" placeholder="Enter Selling Price" required>
-
-                <button id="addProductBtn">Add Product</button>
+                  
+                  <label for="buyingPrice">Buying Price:</label>
+                  <input type="number" id="buyingPrice" placeholder="Enter Buying Price" required>
+                  
+                  <label for="sellingPrice">Selling Price:</label>
+                  <input type="number" id="sellingPrice" placeholder="Enter Selling Price" required>
+                  
+                  <button id="addProductBtn">Add Product</button>               
+                </div>
 
                 <!-- Product Register Table -->
                 <h3>Product Register</h3>
@@ -263,30 +271,32 @@
             <section id="salesFilters" class="hidden">
                 <h2>Sales Filters</h2>
 
-                <label for="filterPeriod">Filter by Period:</label>
-                <select id="filterPeriod">
-                    <option value="">Select Period</option>
-                    <option value="today">Today</option>
-                    <option value="thisWeek">This Week</option>
-                    <option value="thisMonth">This Month</option>
-                    <option value="custom">Custom Date Range</option>
-                </select>
-                
-                <label for="startDate">Start Date:</label>
-                <input type="date" id="startDate" disabled>
-                
-                <label for="endDate">End Date:</label>
-                <input type="date" id="endDate" disabled>
-                
-                <label for="filterProduct">Filter by Product:</label>
-                <select id="filterProduct">
-                    <option value="">All Products</option>
-                </select>
-                
-                <label for="filterCategory">Filter by Category:</label>
-                <select id="filterCategory">
-                    <option value="">All Categories</option>
-                </select>
+                <div class="report-control">
+                  <label for="filterPeriod">Filter by Period:</label>
+                  <select id="filterPeriod">
+                      <option value="">Select Period</option>
+                      <option value="today">Today</option>
+                      <option value="thisWeek">This Week</option>
+                      <option value="thisMonth">This Month</option>
+                      <option value="custom">Custom Date Range</option>
+                  </select>
+                  
+                  <label for="startDate">Start Date:</label>
+                  <input type="date" id="startDate" disabled>
+                  
+                  <label for="endDate">End Date:</label>
+                  <input type="date" id="endDate" disabled>
+                  
+                  <label for="filterProduct">Filter by Product:</label>
+                  <select id="filterProduct">
+                      <option value="">All Products</option>
+                  </select>
+                  
+                  <label for="filterCategory">Filter by Category:</label>
+                  <select id="filterCategory">
+                      <option value="">All Categories</option>
+                  </select>
+                </div>
                 
                 <table id="salesTable">
                     <thead>
@@ -311,9 +321,11 @@
             <!-- Expense Type Register -->
             <section id="expenseTypeSection" class="hidden">
                 <h2>Register Expense Type</h2>
-                <input id="expenseTypeId" placeholder="Expense ID (e.g. EXP001)" />
-                <input id="expenseLabel" placeholder="Expense Label (e.g. Labour, Transport)" />
-                <button id="addExpenseTypeBtn">Add Expense Type</button>
+                <div class="record-entry">
+                  <input id="expenseTypeId" placeholder="Expense ID (e.g. EXP001)" />
+                  <input id="expenseLabel" placeholder="Expense Label (e.g. Labour, Transport)" />
+                  <button id="addExpenseTypeBtn">Add Expense Type</button>
+                </div>
             
                 <h3>Expense Type Register</h3>
                 <table id="expenseTypeRegister">
@@ -330,85 +342,105 @@
                 <h2>Daily Expenses</h2>
               
                 <!-- Expense input -->
-                <select id="expenseDropdown"></select>
-                <input id="expenseAmount" type="number" placeholder="Amount (Ksh)" />
-                <input id="expenseNote" placeholder="Optional Note" />
-                <button id="addExpenseBtn">Add Expense</button>
+                <div class="record-entry">
+                  <select id="expenseDropdown"></select>
+                  <input id="expenseAmount" type="number" placeholder="Amount (Ksh)" />
+                  <input id="expenseNote" placeholder="Optional Note" />
+                  <button id="addExpenseBtn">Add Expense</button>
+                </div>
               
                 <!-- Report table -->
                 <h3>Today's Expenses</h3>
                 <table id="dailyExpenseTable">
                   <thead>
-                    <tr><th>Type</th><th>Amount</th><th>Note</th></tr>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type ID</th>
+                      <th>Type</th>
+                      <th>Note</th>
+                      <th>Amount</th>
+                    </tr>
                   </thead>
                   <tbody></tbody>
                 </table>
-              
-                <p><strong>Total Expenses:</strong> <span id="totalExpenses">Ksh 0.00</span></p>
-                <p><strong>Net Profit (Sales − Expenses):</strong> <span id="netProfit">Ksh 0.00</span></p>
 
                 <div id="salesTotals" style="margin-top: 1rem; font-size: 0.95rem;"></div>
               </section>
 
                 <!-- Weekly Report Controls -->
             <section id="weeklyReportSection" class="hidden">   
-              <div style="margin-bottom: 1rem;">
-                <button id="prevWeekBtn">⏮️ Previous Week</button>
-                <button id="nextWeekBtn">⏭️ Next Week</button>
-                <button id="loadWeeklyReportBtn">🔄 Load This Week</button>
-                <button id="printWeeklyReportBtn">🖨️ Print Report</button>
-                <button id="exportWeeklyReportBtn">💾 Export as CSV</button>
-              </div>
-
+              
               <!-- Week Range Display -->
-              <div id="weekRangeLabel" style="margin-bottom: 1rem; font-weight: bold;"></div>
+              <div id="weekRangeLabel"></div>
+              <div class="week-navigation-buttons">
+                <button id="prevWeekBtn">⏮️</button>
+                <button id="loadWeeklyReportBtn">🔄</button>
+                <button id="nextWeekBtn">⏭️</button>
+              </div>
 
               <!-- Weekly Report Table -->
               <table id="weeklyReportTable" class="report-table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Total Sales</th>
-                    <th>Profit</th>
-                    <th>Expenses</th>
-                    <th>Mpesa Sales</th>
-                    <th>Credit Issued</th>
-                    <th>Credit Payments</th>
-                    <th>Mpesa Credit Payments</th>
-                    <th>Net Profit</th>
+                      <th>Date</th>
+                      <th>Total Sales</th>
+                      <th>Buying Price</th>
+                      <th>Profit</th>
+                      <th>Restocking</th>
+                      <th>Expenses</th>
+                      <th>Net Profit</th>
+                      <th>Mpesa Sales</th>
+                      <th>Credit Issued</th>
+                      <th>Credit Pymt</th>
+                      <th>Mpesa Credit Pymt</th>
+                      <th>Cash at Hand</th>
                   </tr>
                 </thead>
                 <tbody>
                   <!-- Rows will be dynamically inserted by JavaScript -->
                 </tbody>
               </table>
+              <div class="print-export-report">
+                <button id="printWeeklyReportBtn">🖨️ Print</button>
+                <button id="exportWeeklyReportBtn">💾 Export CSV</button>
+              </div>
+              <div id="summary-cards">
+                <div class="summary-filter">
+                  <label for="summaryView">View Summary For:</label>
+                  <select id="summaryView">
+                    <option value="today" selected>Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="year">This Year</option>
+                  </select>
+                </div>
+              </div>
             </section>
               <!--Monthly Report-->
               <section id="monthlyReportSection" class="hidden">
                 <h2>Monthly Report</h2>
-              
-                <label for="reportMonth">Select Month:</label>
-                <input type="month" id="reportMonth" />
-              
-                <button id="loadMonthlyReportBtn">Load Report</button>
-                <div style="margin-top: 1rem;">
-                    <button id="printMonthlyReportBtn">🖨️ Print Report</button>
-                    <button id="exportMonthlyReportBtn">💾 Export as CSV</button>
+
+                <div class="report-control">
+                  <label for="reportMonth">Select Month:</label>
+                  <input type="month" id="reportMonth" />
+                  <button id="loadMonthlyReportBtn">Load Report</button>
                 </div>
-                  
-              
+
                 <table id="monthlyReportTable" class="table table-striped table-bordered">
                   <thead class="thead-dark">
                     <tr>
                       <th>Date</th>
                       <th>Total Sales</th>
+                      <th>Buying Price</th>
                       <th>Profit</th>
+                      <th>Restocking</th>
                       <th>Expenses</th>
+                      <th>Net Profit</th>
                       <th>Mpesa Sales</th>
                       <th>Credit Issued</th>
-                      <th>Credit Payments</th>
-                      <th>Mpesa Credit Payments</th>
-                      <th>Net Profit</th>
+                      <th>Credit Pymt</th>
+                      <th>Mpesa Credit Pymt</th>
+                      <th>Cash at Hand</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -418,40 +450,50 @@
                     <!-- Totals row will be inserted by monthlyReport.js -->
                   </tfoot>
                 </table>
+                <div class="print-export-report">
+                  <button id="printMonthlyReportBtn">🖨️ Print Report</button>
+                  <button id="exportMonthlyReportBtn">💾 Export as CSV</button>
+                </div>
               </section>
+
               <!--Expense History-->
               <section id="expenseHistorySection" class="hidden">
                 <h2>Expense History</h2>
               
-                <label for="expenseHistoryMonth">Select Month:</label>
-                <input type="month" id="expenseHistoryMonth" />
-                <button id="loadExpenseHistoryBtn">Load Expenses</button>
+                <div class="report-control">
+                  <label for="expenseHistoryMonth">Select Month:</label>
+                  <input type="month" id="expenseHistoryMonth" />
+                  <button id="loadExpenseHistoryBtn">Load Expenses</button>
+                </div>
               
                 <table id="expenseHistoryTable">
                   <thead>
                     <tr>
                       <th>Date</th>
+                      <th>Type ID</th>
                       <th>Type</th>
-                      <th>Amount</th>
                       <th>Note</th>
+                      <th>Amount</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
                 </table>
-              
-                <p><strong>Total Expenses:</strong> <span id="expenseHistoryTotal">Ksh 0.00</span></p>
+
+                <p><strong>Total:</strong> <span id="expenseHistoryTotal">Ksh 0.00</span></p>
               </section>
               
                 <!--Backup and Restore-->
             <section id="backupAndRestore" class="hidden">
                 <h2>Backup & Restore</h2>
                 
-                <!-- Export -->
-                <button id="backupBtn">Export Backup</button>
-                
-                <!-- Import -->
-                <label for="restoreFileInput" style="display:block; margin-top: 1rem;">Import Backup:</label>
-                <input type="file" id="restoreFileInput" accept="application/json" />
+                <div class="report-control">
+                  <!-- Export -->
+                  <button id="backupBtn">Export Backup</button>
+                  
+                  <!-- Import -->
+                  <label for="restoreFileInput" style="display:block; margin-top: 1rem;">Import Backup:</label>
+                  <input type="file" id="restoreFileInput" accept="application/json" />
+                </div>
               </section>
               
     </div>
@@ -464,20 +506,36 @@
         </div>
     </div>
     <div id="loader" style="position: fixed; top: 0; left: 0; 
-       width: 100%; height: 100%; background: white; 
-       display: flex; justify-content: center; align-items: center; 
-       font-size: 1.5rem; z-index: 9999;">
-    Loading Canteen App...
+          width: 100%; height: 100%; background: white; 
+          display: flex; justify-content: center; align-items: center; 
+          font-size: 1.5rem; z-index: 9999;">
+        Welcome to MSS Canteen Management 👋
     </div>
 
     <div id="app"></div>
     <script src="bundle.js" defer></script>
     <script>
-        // Hide loader when app is ready
         window.addEventListener('load', () => {
-          const loader = document.getElementById('loader');
-          if (loader) loader.style.display = 'none';
+          // Check if welcome message was shown before
+          const hasLaunchedBefore = localStorage.getItem('mssAppFirstLaunchShown');
+
+          if (!hasLaunchedBefore) {
+            // Show for 8 seconds then hide
+            setTimeout(() => {
+              const loader = document.getElementById('loader');
+              if (loader) loader.style.display = 'none';
+            }, 5000);
+
+            // Mark as shown
+            localStorage.setItem('mssAppFirstLaunchShown', 'true');
+          } else {
+            // Hide immediately on next refresh
+            const loader = document.getElementById('loader');
+            if (loader) loader.style.display = 'none';
+          }
         });
-      </script>
+</script>
+
+
 </body>
 </html>

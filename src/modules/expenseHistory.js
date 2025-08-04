@@ -9,40 +9,34 @@ export function loadExpenseHistory(year, month) {
     return;
   }
 
-  // Format month (YYYY-MM)
   const monthKey = `${year}-${String(month).padStart(2, "0")}`;
-
-  // Get data
   const allExpenses = getDailyExpenses();
   const expenseTypes = getExpenseTypes();
 
-  // Filter by selected month
   const monthlyExpenses = allExpenses.filter(exp => exp.date?.startsWith(monthKey));
 
-  // Reset table
   tbody.innerHTML = "";
   let total = 0;
 
-  // Handle empty state
   if (monthlyExpenses.length === 0) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="4" style="text-align:center;"><em>No expenses recorded for ${monthKey}.</em></td>`;
+    emptyRow.innerHTML = `<td colspan="5" style="text-align:center;"><em>No expenses recorded for ${monthKey}.</em></td>`;
     tbody.appendChild(emptyRow);
     totalDisplay.textContent = "Ksh 0.00";
     return;
   }
 
-  // Render rows
   monthlyExpenses.forEach(exp => {
     const type = expenseTypes.find(t => t.typeId === exp.expenseTypeId);
-    const label = type ? type.label : exp.expenseTypeId;
+    const label = type ? type.label : "-";
 
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${exp.date}</td>
+      <td>${exp.expenseTypeId}</td>
       <td>${label}</td>
-      <td>Ksh ${Number(exp.amount).toFixed(2)}</td>
       <td>${exp.note || "-"}</td>
+      <td>Ksh ${Number(exp.amount).toFixed(2)}</td>
     `;
     tbody.appendChild(row);
 

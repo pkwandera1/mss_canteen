@@ -1,8 +1,9 @@
 // mpesaPayments.js
 
 import { getMpesaPayments, saveMpesaPayment } from './storage.js';
-import { getCurrentDate } from './utils.js';
-import { showToast } from './utils.js'; // make sure this is exported from utils.js
+import { getCurrentDate, showError, showToast } from './utils.js';
+import { refreshUI, refreshReports } from './ui.js';
+
 
 let editingMpesaId = null;
 
@@ -13,7 +14,7 @@ export function handleSaveMpesaPayment() {
   const btn = document.getElementById('mpesaBtn');
 
   if (!name || isNaN(amount) || amount <= 0 || !type) {
-    alert('Please fill all fields with valid values.');
+    showError('Please fill all fields with valid values.');
     return;
   }
 
@@ -36,6 +37,8 @@ export function handleSaveMpesaPayment() {
     loadMpesaPayments();
     clearMpesaForm(); // ✅ Clears the inputs
     showToast(`✅ Mpesa payment of KES ${amount.toFixed(2)} recorded`);
+    refreshUI();
+    refreshReports();
   }
 }
 
@@ -89,6 +92,8 @@ export function loadMpesaPayments(search = '') {
   tbody.appendChild(totalRow);
 
   setMpesaEventListeners();
+  populateMpesaClientsDropdown();
+
 }
 
 
@@ -107,13 +112,13 @@ function setMpesaEventListeners() {
       const newAmountStr = prompt("Edit Amount:", payment.amount);
       const newAmount = parseFloat(newAmountStr);
       if (isNaN(newAmount) || newAmount <= 0) {
-        alert("Invalid amount entered.");
+        showError("Invalid amount entered.");
         return;
       }
   
       const newType = prompt("Edit Type (Sale or Credit Payment):", payment.type || "Sale");
       if (!["Sale", "Credit Payment"].includes(newType)) {
-        alert("Invalid type. Use 'Sale' or 'Credit Payment'.");
+        showError("Invalid type. Use 'Sale' or 'Credit Payment'.");
         return;
       }
   
@@ -138,6 +143,8 @@ function setMpesaEventListeners() {
       saveMpesaPayment(updated);
       showToast('🗑️ Mpesa payment deleted.');
       loadMpesaPayments();
+      refreshUI();
+      refreshReports();
     });
   });
 }
@@ -157,4 +164,32 @@ export function setupMpesaFilters() {
 
   document.getElementById('mpesaFromDate').addEventListener('change', () => loadMpesaPayments());
   document.getElementById('mpesaToDate').addEventListener('change', () => loadMpesaPayments());
+}
+
+// ✅ Populate Mpesa Clients Dropdown
+export function populateMpesaClientsDropdown() {
+  const payments = getMpesaPayments();
+  const uniqueNames = [...new Set(payments.map(p => p.name.trim()).filter(Boolean))];
+
+  // Dropdown for the name input
+  const nameList = document.getElementById("mpesaNameList");
+  if (nameList) {
+    nameList.innerHTML = "";
+    uniqueNames.forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      nameList.appendChild(option);
+    });
+  }
+
+  // Dropdown for the search filter input
+  const filterList = document.getElementById("mpesaSearchList");
+  if (filterList) {
+    filterList.innerHTML = "";
+    uniqueNames.forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      filterList.appendChild(option);
+    });
+  }
 }

@@ -1,30 +1,45 @@
 // src/modules/expenses.js
 import { getExpenseTypes, getDailyExpenses, saveDailyExpenses, getSales } from "./storage.js";
-import { getCurrentDate } from './utils.js';
+import { getCurrentDate, showError, showToast } from './utils.js';
 import { createSaleRecord } from './sales.js';
+import { refreshUI, refreshReports } from './ui.js';
 
-// Helper function to check if expense affects inventory
+
+
+// ✅ Helper: check if expense type is inventory-related
 function isInventoryExpense(expenseTypeId) {
   const inventoryTypes = ['INVENTORY_PURCHASE', 'STOCK_REPLENISHMENT'];
   return inventoryTypes.includes(expenseTypeId);
 }
 
+// ✅ Helper: normalize date to YYYY-MM-DD (local)
+function normalizeDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0); // Ensure local midnight
+  return d.toLocaleDateString('en-CA'); // "YYYY-MM-DD"
+}
+
 export function addExpense() {
-  const typeId = document.getElementById("expenseDropdown")?.value;
-  const amount = parseFloat(document.getElementById("expenseAmount")?.value);
-  const note = document.getElementById("expenseNote")?.value.trim();
+  const typeIdInput = document.getElementById("expenseDropdown");
+  const amountInput = document.getElementById("expenseAmount");
+  const noteInput = document.getElementById("expenseNote");
+
+  const typeId = typeIdInput?.value;
+  const amount = parseFloat(amountInput?.value);
+  const note = noteInput?.value.trim();
 
   if (!typeId || isNaN(amount) || amount <= 0) {
-    alert("Please select an expense type and enter a valid amount.");
-    return;
+    return showError("Please select an expense type and enter a valid amount.");
   }
 
   try {
-    // Record the basic expense
-    const allExpenses = getDailyExpenses();
+    const allExpenses = getDailyExpenses() || [];
+    const expenseDate = getCurrentDate();
+
     const newExpense = {
       id: `EXP${Date.now()}`,
-      date: getCurrentDate(),
+      date: expenseDate,
       expenseTypeId: typeId,
       amount,
       note
@@ -33,61 +48,88 @@ export function addExpense() {
     allExpenses.push(newExpense);
     saveDailyExpenses(allExpenses);
 
-    // If this is an inventory-related expense, also record a sale
+    // ✅ Optionally record a linked sale if inventory expense
     if (isInventoryExpense(typeId)) {
-      createSaleRecord(
-        typeId, // Using typeId as productId for inventory expenses
-        1, // Default quantity for expense items
-        getCurrentDate() // Use global date
-      );
+      createSaleRecord(typeId, 1, expenseDate);
     }
 
-    alert("Expense recorded successfully.");
+    showToast("✅ Expense recorded successfully.");
+    refreshUI();
+    refreshReports();
+
+    // Clear form fields
+    if (typeIdInput) typeIdInput.value = "";
+    if (amountInput) amountInput.value = "";
+    if (noteInput) noteInput.value = "";
+
     loadDailyExpenseReport();
   } catch (error) {
     console.error("Error recording expense:", error);
-    alert(`Error: ${error.message}`);
+    showError(`Error: ${error.message}`);
   }
 }
 
 export function loadDailyExpenseReport() {
   const tbody = document.querySelector("#dailyExpenseTable tbody");
-  const totalExpensesSpan = document.getElementById("totalExpenses");
-  const netProfitSpan = document.getElementById("netProfit");
   const salesTotalsBox = document.getElementById("salesTotals");
 
-  if (!tbody || !totalExpensesSpan || !netProfitSpan || !salesTotalsBox) return;
+  if (!tbody || !salesTotalsBox) return;
 
-  const today = getCurrentDate();
-  const expenses = getDailyExpenses().filter(e => e.date === today);
+  const today = normalizeDate(getCurrentDate());
 
+  // ✅ Fetch all data
+  const allExpenses = getDailyExpenses() || [];
+  const allSales = getSales() || [];
+
+  // ✅ Filter today's expenses
+  const expenses = allExpenses.filter(e => normalizeDate(e.date) === today);
+
+  // Split expenses into categories
+  const regularExpenses = expenses.filter(e => e.expenseTypeId !== 'RESTOCKING');
+  const restockingExpenses = expenses.filter(e => e.expenseTypeId === 'RESTOCKING');
+
+  const totalRegular = regularExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalRestocking = restockingExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalExpenses = totalRegular + totalRestocking;
+
+  // ✅ Render expense table rows
   tbody.innerHTML = "";
-  let totalExpenses = 0;
-
+  const types = getExpenseTypes() || [];
   expenses.forEach(exp => {
+    const type = types.find(t => t.typeId === exp.expenseTypeId);
+    const label = type ? type.label : exp.expenseTypeId;
+
     const row = document.createElement("tr");
     row.innerHTML = `
+      <td>${normalizeDate(exp.date)}</td>
       <td>${exp.expenseTypeId}</td>
-      <td>Ksh ${exp.amount.toFixed(2)}</td>
+      <td>${label}</td>
       <td>${exp.note || "-"}</td>
+      <td>Ksh ${Number(exp.amount).toFixed(2)}</td>
     `;
     tbody.appendChild(row);
-    totalExpenses += exp.amount;
   });
 
-  totalExpensesSpan.textContent = `Ksh ${totalExpenses.toFixed(2)}`;
 
-  // Calculate net profit including sales
-  const sales = getSales().filter(s => s.date === today);
-  const totalProfit = sales.reduce((sum, s) => sum + s.profit, 0);
-  const netProfit = totalProfit - totalExpenses;
+  // ✅ Filter today's sales
+  const sales = allSales.filter(s => normalizeDate(s.date) === today);
+ 
 
-  netProfitSpan.textContent = `Ksh ${netProfit.toFixed(2)}`;
+  // ✅ Compute total profit
+  const totalProfit = sales.reduce((sum, s) => {
+    const profit = Number(s.profit) || ((Number(s.sellingPrice) - Number(s.buyingPrice)) * (s.quantity || 1));
+    return sum + (profit || 0);
+  }, 0);
 
-  // Display sales totals
+  const netProfit = totalProfit - totalRegular;
+
+  // ✅ Updated summary layout
   salesTotalsBox.innerHTML = `
-    <p><strong>Total Sales Profit:</strong> Ksh ${totalProfit.toFixed(2)}</p>
+    <p><strong>Regular expenses:</strong> Ksh ${totalRegular.toFixed(2)}</p>
+    <p><strong>Restocking expenses:</strong> Ksh ${totalRestocking.toFixed(2)}</p>
     <p><strong>Total Expenses:</strong> Ksh ${totalExpenses.toFixed(2)}</p>
-    <p><strong>Net Profit:</strong> Ksh ${netProfit.toFixed(2)}</p>
+    <br>
+    <p><strong>Gross profit:</strong> Ksh ${totalProfit.toFixed(2)}</p>
+    <p><strong>Net Profit (Gross − Regular expenses):</strong> Ksh ${netProfit.toFixed(2)}</p>
   `;
 }

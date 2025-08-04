@@ -1,72 +1,57 @@
 // src/modules/utils.js
+import { safeDateParse, formatDateYMD } from './reportUtils.js';
 
-let globalDate = new Date().toISOString().split('T')[0];
+let globalDate = getLocalDateYMD(new Date());
 let isDateModified = false; // Track if user has changed the date
 
+/** ✅ Get local date in YYYY-MM-DD format */
+function getLocalDateYMD(date = new Date()) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .split('T')[0];
+}
+
+export function getStartOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // Sunday = 0
+  // Move backwards to Sunday start
+  d.setDate(d.getDate() - day);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export function initGlobalDateControl() {
-  const dateControl = document.createElement('div');
-  dateControl.id = 'globalDateControl';
-  dateControl.style.position = 'fixed';
-  dateControl.style.top = '10px';
-  dateControl.style.right = '10px';
-  dateControl.style.zIndex = '1000';
-  dateControl.style.background = 'white';
-  dateControl.style.padding = '5px';
-  dateControl.style.borderRadius = '4px';
-  dateControl.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-  dateControl.style.cursor = 'move'; // Show move cursor
+  const dateControl = document.getElementById('globalDateControl');
+  if (!dateControl) return; // Exit if element not found
 
-  const label = document.createElement('label');
-  label.htmlFor = 'globalDateInput';
-  label.textContent = 'Working Date:';
-  label.style.display = 'block';
-  label.style.marginBottom = '5px';
-  label.style.fontSize = '0.8em';
-  dateControl.appendChild(label);
+  const dateInput = document.getElementById('globalDateInput');
+  const resetBtn = document.getElementById('resetDateBtn');
 
-  const dateInput = document.createElement('input');
-  dateInput.type = 'date';
-  dateInput.id = 'globalDateInput';
+  // ✅ Set initial value
   dateInput.value = globalDate;
-  dateInput.style.padding = '5px';
-  dateInput.style.borderRadius = '4px';
-  dateInput.style.border = '1px solid #ccc';
-  dateControl.appendChild(dateInput);
 
-  const resetBtn = document.createElement('button');
-  resetBtn.id = 'resetDateBtn';
-  resetBtn.textContent = 'Reset to Today';
-  resetBtn.style.marginTop = '5px';
-  resetBtn.style.padding = '3px 8px';
-  resetBtn.style.fontSize = '0.8em';
-  resetBtn.style.display = 'none';
-  dateControl.appendChild(resetBtn);
-
+  // ✅ Date change event
   dateInput.addEventListener('change', (e) => {
     globalDate = e.target.value;
     isDateModified = true;
-    resetBtn.style.display = 'block';
+    resetBtn.style.display = 'inline-block';
   });
 
+  // ✅ Reset button event
   resetBtn.addEventListener('click', () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateYMD(new Date());
     dateInput.value = today;
     globalDate = today;
     isDateModified = false;
     resetBtn.style.display = 'none';
   });
-
-  document.body.appendChild(dateControl);
-
-  // 👇 Make it draggable
-  makeElementDraggable(dateControl, dateInput);
 }
 
 
 export function getCurrentDate() {
-  // Reset to today at midnight if not modified
+  // Reset to today at local midnight if not modified
   if (!isDateModified) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateYMD(new Date());
     if (globalDate !== today) {
       globalDate = today;
       const input = document.getElementById('globalDateInput');
@@ -79,10 +64,10 @@ export function getCurrentDate() {
 export function setCurrentDate(date) {
   if (typeof date === 'string') {
     globalDate = date;
-    isDateModified = date !== new Date().toISOString().split('T')[0];
+    isDateModified = date !== getLocalDateYMD(new Date());
   } else if (date instanceof Date) {
-    globalDate = date.toISOString().split('T')[0];
-    isDateModified = date.toISOString().split('T')[0] !== new Date().toISOString().split('T')[0];
+    globalDate = getLocalDateYMD(date);
+    isDateModified = globalDate !== getLocalDateYMD(new Date());
   }
   const input = document.getElementById('globalDateInput');
   const resetBtn = document.getElementById('resetDateBtn');
@@ -99,45 +84,32 @@ export function validateDate(dateStr) {
   return dateStr;
 }
 
-export function showToast(message) {
+// ✅ Success Toast
+export function showToast(message, duration = 3000) {
+  createToast(message, "success", duration);
+}
+
+// ✅ Error Toast
+export function showError(message, duration = 4000) {
+  createToast(`❌ ${message}`, "error", duration);
+}
+
+// ✅ General Toast Creator
+function createToast(message, type, duration) {
   const toast = document.createElement("div");
-  toast.className = "toast-notification";
+  toast.className = `toast toast-${type}`;
   toast.textContent = message;
 
-  toast.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #4caf50;
-    color: white;
-    padding: 16px 24px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    z-index: 9999;
-    font-size: 16px;
-    text-align: center;
-    opacity: 0;
-    animation: fadeInOut 3s forwards;
-  `;
-
-  // Add fade-in and fade-out keyframe animation
-  const style = document.createElement("style");
-  style.innerHTML = `
-    @keyframes fadeInOut {
-      0% { opacity: 0; transform: translate(-50%, -60%); }
-      10% { opacity: 1; transform: translate(-50%, -50%); }
-      90% { opacity: 1; transform: translate(-50%, -50%); }
-      100% { opacity: 0; transform: translate(-50%, -40%); }
-    }
-  `;
-  document.head.appendChild(style);
-
   document.body.appendChild(toast);
+
   setTimeout(() => {
-    toast.remove();
-    style.remove(); // Clean up animation style
-  }, 6000);
+    toast.classList.add("show");
+  }, 100);
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 500);
+  }, duration);
 }
 
 export function makeElementDraggable(el, excludeChild = null) {
@@ -161,4 +133,21 @@ export function makeElementDraggable(el, excludeChild = null) {
   document.addEventListener('mouseup', () => {
     isDragging = false;
   });
+}
+
+export function getExpenseBreakdownForDate(dateKey, allExpenses) {
+  const filtered = allExpenses.filter(e => formatDateYMD(safeDateParse(e.date)) === dateKey);
+  
+  const restocking = filtered
+    .filter(e => e.expenseTypeId === 'RESTOCKING')
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  const total = filtered.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const regular = total - restocking;
+
+  return {
+    regularExpenses: regular,
+    restockingExpense: restocking,
+    expensesTotal: total
+  };
 }

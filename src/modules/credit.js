@@ -1,8 +1,9 @@
 // src/modules/credit.js
 import { getProducts, getCredits, saveCredits } from './storage.js';
-import { renderCreditsTable, populateCreditDropdown } from './ui.js';
-import { createSaleRecord } from './sales.js';
-import { getCurrentDate, validateDate, showToast } from './utils.js';
+import { renderCreditsTable, populateCreditDropdown, refreshUI, refreshReports } from './ui.js';
+import { getCurrentDate, showToast, showError } from './utils.js';
+
+
 
 // ========== Initialize Credit Module ==========
 export function initCreditModule() {
@@ -11,9 +12,12 @@ export function initCreditModule() {
     setupCreditEventListeners();
     renderCreditsTable(getCredits());
     updateCreditTotals();
+    populateClientDropdown("clientList");       // For entering new credit
+    populateClientDropdown("filterClientList"); // For search filter
+
   } catch (error) {
     console.error("Failed to initialize credit module:", error);
-    alert("Failed to initialize credit system. Please try again.");
+    showError("Failed to initialize credit system. Please try again.");
   }
 }
 
@@ -34,24 +38,32 @@ function loadCreditDropdown() {
 // ========== Filter Records ==========
 function filterCreditRecords() {
   try {
-    const search = sanitizeInput(document.getElementById("creditSearch")?.value.toLowerCase());
-    const fromDate = validateDate(document.getElementById("creditFromDate")?.value);
-    const toDate = validateDate(document.getElementById("creditToDate")?.value);
+    const searchInput = document.getElementById("creditSearch")?.value || "";
+    const search = searchInput.toLowerCase().trim();
 
-    const filtered = getCredits().filter(credit => {
+    const from = document.getElementById("creditFromDate")?.value || null;
+    const to = document.getElementById("creditToDate")?.value || null;
+
+    // ✅ FIX: Get credits dynamically instead of using undefined allCredits
+    const allCredits = getCredits();
+
+    const filtered = allCredits.filter(credit => {
+      const name = (credit.buyerName || "").toLowerCase().trim();
+      const item = (credit.itemName || "").toLowerCase().trim();
+
+      const matchesText = !search || name.includes(search) || item.includes(search);
+
       const creditDate = new Date(credit.dateTaken);
-      return (
-        (credit.buyerName.toLowerCase().includes(search) ||
-         credit.itemName.toLowerCase().includes(search)) &&
-        (!fromDate || creditDate >= new Date(fromDate)) &&
-        (!toDate || creditDate <= new Date(toDate))
-      );
+      const matchesFrom = !from || creditDate >= new Date(from);
+      const matchesTo = !to || creditDate <= new Date(to);
+
+      return matchesText && matchesFrom && matchesTo;
     });
 
     renderCreditsTable(filtered);
     updateCreditTotals(filtered);
   } catch (error) {
-    console.error("Filtering failed:", error);
+    console.error("❌ Filtering failed:", error);
   }
 }
 
@@ -111,19 +123,21 @@ function recordNewCredit() {
       payments: []
     };
 
-    //createSaleRecord(product.productId, 1, credit.dateTaken);
-
     const credits = getCredits();
     credits.push(credit);
     saveCredits(credits);
 
+    populateClientDropdown("clientList");
+    populateClientDropdown("filterClientList");
     renderCreditsTable(credits);
     resetCreditForm();
 
     showToast(`✅ Credit of KES ${amount.toFixed(2)} recorded for ${buyerName}`);
+    refreshUI();
+    refreshReports();
   } catch (error) {
     console.error("Credit recording failed:", error);
-    alert(error.message);
+    showError(error.message);
   }
 }
 
@@ -149,9 +163,11 @@ function handleAddPayment(id) {
     saveCredits(credits);
     renderCreditsTable(credits);
     showToast(`Payment of ${paymentAmount.toFixed(2)} recorded`);
+    refreshUI();
+    refreshReports();
   } catch (error) {
     console.error("Payment failed:", error);
-    alert(error.message);
+    showError(error.message);
   }
 }
 
@@ -169,9 +185,11 @@ function handleDeleteCredit(id) {
     saveCredits(updated);
     renderCreditsTable(updated);
     showToast("Credit record deleted");
+    refreshUI();
+    refreshReports();
   } catch (error) {
     console.error("Deletion failed:", error);
-    alert(error.message);
+    showError(error.message);
   }
 }
 
@@ -200,9 +218,11 @@ function handleEditCredit(id) {
     saveCredits(credits);
     renderCreditsTable(credits);
     showToast("Credit updated successfully");
+    refreshUI();
+    refreshReports();
   } catch (error) {
     console.error("Edit failed:", error);
-    alert(error.message);
+    showError(error.message);
   }
 }
 
@@ -253,4 +273,149 @@ function canEditOrDelete(dateTaken) {
   const diffHrs = (Date.now() - new Date(dateTaken).getTime()) / (1000 * 60 * 60);
   return diffHrs < 24;
 }
+
+function populateClientDropdown(targetId = "clientList") {
+  try {
+    const credits = getCredits();
+    const dataList = document.getElementById(targetId);
+    if (!dataList) return;
+
+    const uniqueClients = [...new Set(
+      credits.map(c => c.buyerName?.trim()).filter(Boolean)
+    )];
+
+    dataList.innerHTML = "";
+
+    uniqueClients.forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      dataList.appendChild(option);
+    });
+    
+  } catch (error) {
+    console.error("Failed to populate client dropdown:", error);
+  }
+}
+
+document.getElementById("printFilteredCreditsBtn")?.addEventListener("click", printFilteredCredits);
+
+
+function printFilteredCredits() {
+  try {
+    const credits = getCredits();
+    const searchInput = document.getElementById("creditSearch")?.value.trim();
+    const isSingleClient = searchInput && searchInput.length > 0;
+
+    let filteredCredits = credits;
+
+    // ✅ Filter by client if name is entered
+    if (isSingleClient) {
+      filteredCredits = credits.filter(c => c.buyerName.toLowerCase().includes(searchInput.toLowerCase()));
+    }
+
+    // ✅ Group by client
+    const grouped = filteredCredits.reduce((acc, credit) => {
+      if (!acc[credit.buyerName]) acc[credit.buyerName] = [];
+      acc[credit.buyerName].push(credit);
+      return acc;
+    }, {});
+
+    const sortedClients = Object.keys(grouped).sort();
+
+    // ✅ Calculate overall totals
+    const grandOwed = filteredCredits.reduce((sum, c) => sum + c.amount, 0);
+    const grandPaid = filteredCredits.reduce((sum, c) => sum + c.paidAmount, 0);
+    const grandBalance = filteredCredits.reduce((sum, c) => sum + c.balance, 0);
+
+    // ✅ Build styled content
+    let content = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; width: 95%; color: #333;">
+        <h1 style="text-align: center; margin-bottom: 5px;">Debt Statement Report</h1>
+        <p style="text-align: center; font-size: 14px; margin-top: 0;">Generated on ${getCurrentDate()}</p>
+        <hr style="margin: 10px 0 20px 0;">
+    `;
+
+    sortedClients.forEach(client => {
+      const clientDebts = grouped[client];
+      const totalOwed = clientDebts.reduce((sum, c) => sum + c.amount, 0);
+      const totalPaid = clientDebts.reduce((sum, c) => sum + c.paidAmount, 0);
+      const totalBalance = clientDebts.reduce((sum, c) => sum + c.balance, 0);
+
+      let rows = "";
+      clientDebts.forEach(c => {
+        rows += `
+          <tr>
+            <td>${c.itemName}</td>
+            <td>KES ${c.amount.toFixed(2)}</td>
+            <td>KES ${c.paidAmount.toFixed(2)}</td>
+            <td style="color: ${c.balance > 0 ? 'red' : 'green'};">KES ${c.balance.toFixed(2)}</td>
+          </tr>`;
+      });
+
+      content += `
+        <div style="border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 20px; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <h3 style="margin-top: 0; color: #444;">Client: ${client}</h3>
+          <table width="100%" style="border-collapse: collapse; margin-top: 5px; font-size: 14px;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Item</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Total</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Paid</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Balance</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p style="margin: 10px 0 0 0; font-weight: bold;">
+            Totals: Owed: KES ${totalOwed.toFixed(2)} | Paid: KES ${totalPaid.toFixed(2)} | 
+            Balance: <span style="color:red;">KES ${totalBalance.toFixed(2)}</span>
+          </p>
+        </div>
+      `;
+    });
+
+    // ✅ Grand Total Summary
+    content += `
+      <div style="margin-top: 20px; padding: 15px; border: 2px solid #000; border-radius: 6px; background: #f7f7f7;">
+        <h2 style="margin: 0 0 5px 0;">Overall Business Debt Summary</h2>
+        <p style="margin: 3px 0;"><strong>Total Owed:</strong> KES ${grandOwed.toFixed(2)}</p>
+        <p style="margin: 3px 0;"><strong>Total Paid:</strong> KES ${grandPaid.toFixed(2)}</p>
+        <p style="margin: 3px 0;"><strong>Outstanding Balance:</strong> <span style="color:red; font-weight:bold;">KES ${grandBalance.toFixed(2)}</span></p>
+      </div>
+      <p style="font-size: 12px; text-align: center; margin-top:15px; color:#777;">
+        Thank you for your business. Kindly settle outstanding balances promptly.
+      </p>
+      </div>
+    `;
+
+    // ✅ Document title
+    const docTitle = isSingleClient
+      ? `${searchInput} Debt Statement`
+      : `All Clients Debt Statement`;
+
+    // ✅ Open print window
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${docTitle}</title>
+          <style>
+            table { width:100%; border-collapse:collapse; }
+            th, td { border:1px solid #ccc; padding:5px; }
+          </style>
+        </head>
+        <body onload="document.title='${docTitle}'; window.print(); window.close();">
+          ${content}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+
+  } catch (error) {
+    console.error("Print filtered credits failed:", error);
+    showError("Could not print client debts.");
+  }
+}
+
+
 

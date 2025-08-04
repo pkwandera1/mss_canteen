@@ -1,24 +1,29 @@
-// src/modules/products.js
 import { getProducts, saveProducts } from './storage.js';
 import { populateProductDropdowns, populateFilters } from './ui.js';
+import { showToast, showError } from './utils.js';
+
+// Input sanitizer
+function sanitizeInput(input) {
+  return input?.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim() || "";
+}
 
 // Register a new product
 export function registerProduct() {
-  const productId = document.getElementById("productId").value.trim().toUpperCase();
-  const productName = document.getElementById("productName").value.trim();
-  const productCategory = document.getElementById("productCategory").value.trim();
+  const productId = sanitizeInput(document.getElementById("productId").value.toUpperCase());
+  const productName = sanitizeInput(document.getElementById("productName").value);
+  const productCategory = sanitizeInput(document.getElementById("productCategory").value);
   const buyingPrice = parseFloat(document.getElementById("buyingPrice").value);
   const sellingPrice = parseFloat(document.getElementById("sellingPrice").value);
 
   if (!productId || !productName || !productCategory || isNaN(buyingPrice) || isNaN(sellingPrice)) {
-    alert("Please fill in all fields correctly.");
+    showError("Please fill in all fields correctly.");
     return;
   }
 
   let products = getProducts();
 
   if (products.some(p => p.productId === productId)) {
-    alert("Product ID already exists!");
+    showError("Product ID already exists!");
     return;
   }
 
@@ -35,10 +40,19 @@ export function registerProduct() {
   products.push(newProduct);
   saveProducts(products);
 
-  alert("Product registered successfully!");
+  showToast("✅ Product registered successfully!");
   updateProductRegisterTable();
   populateProductDropdowns(products);
   populateFilters(products);
+  populateCategoryDropdown(); 
+
+  // Optionally clear inputs
+  document.getElementById("productId").value = "";
+  document.getElementById("productName").value = "";
+  document.getElementById("productCategory").value = "";
+  document.getElementById("buyingPrice").value = "";
+  document.getElementById("sellingPrice").value = "";
+  document.getElementById("productId").focus();
 }
 
 // Render product register table
@@ -59,14 +73,10 @@ export function updateProductRegisterTable() {
     row.insertCell(3).textContent = product.buyingPrice;
     row.insertCell(4).textContent = product.sellingPrice;
 
-    // Create cell for actions
     const actionsCell = row.insertCell(5);
-
-    // Create a button container
     const buttonGroup = document.createElement("div");
     buttonGroup.className = "button-group";
 
-    // Create buttons
     const editButton = document.createElement("button");
     editButton.textContent = "Edit";
     editButton.onclick = () => editProduct(index);
@@ -79,17 +89,12 @@ export function updateProductRegisterTable() {
     historyBtn.textContent = "View History";
     historyBtn.onclick = () => viewPriceHistory(index);
 
-    // Append buttons to container
     buttonGroup.appendChild(editButton);
     buttonGroup.appendChild(updateBtn);
     buttonGroup.appendChild(historyBtn);
-
-    // Append the button group to the cell
     actionsCell.appendChild(buttonGroup);
   });
 }
-
-
 
 // Edit a product (only if not stocked or sold)
 export function editProduct(index) {
@@ -97,7 +102,7 @@ export function editProduct(index) {
   let product = products[index];
 
   if (product.hasSale || (product.stock && product.stock > 0)) {
-    alert("Editing is disabled after stocking or sales.");
+    showError("Editing is disabled after stocking or sales.");
     return;
   }
 
@@ -107,29 +112,32 @@ export function editProduct(index) {
   const newSellingPrice = parseFloat(prompt("New selling price:", product.sellingPrice));
 
   if (!newName || !newCategory || isNaN(newBuyingPrice) || isNaN(newSellingPrice)) {
-    alert("Invalid input");
+    showError("Invalid input.");
     return;
   }
 
-  product.productName = newName;
-  product.productCategory = newCategory;
+  product.productName = sanitizeInput(newName);
+  product.productCategory = sanitizeInput(newCategory);
   product.buyingPrice = newBuyingPrice;
   product.sellingPrice = newSellingPrice;
 
   products[index] = product;
   saveProducts(products);
 
+  showToast("✅ Product updated.");
   updateProductRegisterTable();
   populateProductDropdowns(products);
   populateFilters(products);
+  populateCategoryDropdown(); 
 }
 
+// Update prices if product is in use
 export function updateProduct(index) {
   let products = getProducts();
   let product = products[index];
 
   if (!product.hasSale && (!product.stock || product.stock === 0)) {
-    alert("Use 'Edit' to change this product — it hasn't been sold or stocked yet.");
+    showError("Use 'Edit' to change this product — it hasn't been sold or stocked yet.");
     return;
   }
 
@@ -137,16 +145,13 @@ export function updateProduct(index) {
   const newSellingPrice = parseFloat(prompt("Update selling price:", product.sellingPrice));
 
   if (isNaN(newBuyingPrice) || isNaN(newSellingPrice)) {
-    alert("Invalid price input.");
+    showError("Invalid price input.");
     return;
   }
 
-  // Initialize priceHistory if it doesn't exist
   if (!product.priceHistory) product.priceHistory = [];
-
   const now = new Date().toISOString();
 
-  // Track buying price change
   if (newBuyingPrice !== product.buyingPrice) {
     product.priceHistory.push({
       field: "buyingPrice",
@@ -157,7 +162,6 @@ export function updateProduct(index) {
     product.buyingPrice = newBuyingPrice;
   }
 
-  // Track selling price change
   if (newSellingPrice !== product.sellingPrice) {
     product.priceHistory.push({
       field: "sellingPrice",
@@ -171,12 +175,14 @@ export function updateProduct(index) {
   products[index] = product;
   saveProducts(products);
 
-  alert("Product prices updated successfully.");
+  showToast("✅ Product prices updated.");
   updateProductRegisterTable();
   populateProductDropdowns(products);
   populateFilters(products);
+  populateCategoryDropdown(); 
 }
 
+// View price history in modal
 export function viewPriceHistory(index) {
   const products = getProducts();
   const product = products[index];
@@ -200,16 +206,27 @@ export function viewPriceHistory(index) {
 
   modal.classList.remove("hidden");
 
-  // Close handler
-  closeBtn.onclick = () => {
-    modal.classList.add("hidden");
-  };
+  closeBtn.onclick = () => modal.classList.add("hidden");
 
-  // Close on outside click
-  window.onclick = function(event) {
+  window.onclick = event => {
     if (event.target === modal) {
       modal.classList.add("hidden");
     }
   };
 }
 
+// ✅ Populate product category dropdown dynamically
+export function populateCategoryDropdown() {
+  const products = getProducts();
+  const uniqueCategories = [...new Set(products.map(p => p.productCategory.trim()).filter(Boolean))];
+
+  const dropdown = document.getElementById("productCategoryList");
+  if (!dropdown) return;
+
+  dropdown.innerHTML = "";
+  uniqueCategories.forEach(category => {
+    const option = document.createElement("option");
+    option.value = category;
+    dropdown.appendChild(option);
+  });
+}

@@ -2,7 +2,7 @@
 
 import { getSales, getProducts } from './storage.js';
 import { updateSalesTable } from './ui.js';
-import { getCurrentDate } from './utils.js';
+import { getCurrentDate, showError } from './utils.js';
 
 // Filter sales based on selected criteria
 export function filterSales() {
@@ -67,6 +67,7 @@ export function filterSales() {
 }
 
 // Enable/disable custom date inputs
+
 export function setupPeriodChangeListener() {
   const filterPeriod = document.getElementById("filterPeriod");
   const startDate = document.getElementById("startDate");
@@ -79,6 +80,7 @@ export function setupPeriodChangeListener() {
     filterSales();
   });
 }
+
 
 // Hook filter dropdowns and inputs
 export function setupFilterListeners() {

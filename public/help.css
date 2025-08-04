@@ -1,0 +1,76 @@
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  margin: 20px;
+  background: #f8f9fa;
+  color: #333;
+}
+
+h1 {
+  color: #007BFF;
+  margin-bottom: 10px;
+}
+
+h2 {
+  color: #0056b3;
+  border-bottom: 2px solid #007BFF;
+  padding-bottom: 5px;
+  margin-top: 25px;
+}
+
+h3 {
+  color: #333;
+  margin-top: 20px;
+}
+
+ul, ol {
+  padding-left: 20px;
+}
+
+a {
+  color: #007BFF;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.toc {
+  background: #e9f2ff;
+  padding: 10px;
+  border-left: 5px solid #007BFF;
+  margin-bottom: 20px;
+}
+
+.footer-note {
+  margin-top: 30px;
+  font-size: 0.9em;
+  color: #666;
+  text-align: center;
+}
+
+/* Floating Back to Top Button */
+#backToTopBtn {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  outline: none;
+  width: 45px;
+  height: 45px;
+  font-size: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#backToTopBtn:hover {
+  background-color: #0056b3;
+  transform: scale(1.1);
+}

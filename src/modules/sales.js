@@ -2,7 +2,10 @@
 
 import { getProducts, saveProducts, getSales, saveSales } from './storage.js';
 import { loadStock } from './stock.js';
-import { getCurrentDate, validateDate, showToast } from './utils.js';
+import { getCurrentDate, validateDate, showToast, showError } from './utils.js';
+import { formatDateYMD } from './reportUtils.js';
+import { refreshUI, refreshReports } from './ui.js';
+
 
 // Main function to create sale record
 export function createSaleRecord(productId, quantity, specificDate = null) {
@@ -10,14 +13,19 @@ export function createSaleRecord(productId, quantity, specificDate = null) {
   const sales = getSales();
 
   const product = products.find(p => p.productId === productId);
-  if (!product) throw new Error("Product not found");
+  if (!product) {
+    showError("❌ Product not found");
+    return null;
+  }
 
   if (typeof product.stock !== 'number') {
-    throw new Error("Product stock is not a valid number");
+    showError("❌ Product stock is not a valid number");
+    return null;
   }
 
   if (product.stock < quantity) {
-    throw new Error(`Insufficient stock. Only ${product.stock} available`);
+    showError(`❌ Insufficient stock. Only ${product.stock} available`);
+    return null;
   }
 
   const saleDate = validateDate(specificDate) || getCurrentDate();
@@ -26,6 +34,8 @@ export function createSaleRecord(productId, quantity, specificDate = null) {
   product.stock -= quantity;
   product.hasSale = true;
   saveProducts(products);
+  refreshUI();
+  
 
   const sale = {
     saleId: `S${timestamp}-${Math.floor(Math.random() * 1000)}`,
@@ -50,18 +60,20 @@ export function createSaleRecord(productId, quantity, specificDate = null) {
 
 // UI handler for recording sales
 export function recordSale() {
+  const productDropdown = document.getElementById("productDropdown");
+  const quantityInput = document.getElementById("quantity");
+
+  const productId = productDropdown?.value;
+  const quantity = parseInt(quantityInput?.value);
+
+  if (!productId || isNaN(quantity)) {
+    showError("❌ Please select a product and enter a valid quantity");
+    return;
+  }
+
   try {
-    const productDropdown = document.getElementById("productDropdown");
-    const quantityInput = document.getElementById("quantity");
-
-    const productId = productDropdown?.value;
-    const quantity = parseInt(quantityInput?.value);
-
-    if (!productId || isNaN(quantity)) {
-      throw new Error("Please select a product and enter valid quantity");
-    }
-
     const sale = createSaleRecord(productId, quantity);
+    if (!sale) return; // Stop if sale was not created due to error
 
     // Clear form inputs
     productDropdown.value = "";
@@ -76,7 +88,7 @@ export function recordSale() {
     showToast(`✅ Sale recorded for ${sale.productName} (${quantity} unit${quantity > 1 ? 's' : ''})`);
   } catch (error) {
     console.error("Sale recording error:", error);
-    alert(`❌ ${error.message}`);
+    showError(`❌ ${error.message || "An unexpected error occurred"}`);
   }
 }
 
@@ -86,9 +98,10 @@ export function loadSalesReport(date = null) {
   if (!tbody) return;
 
   const selectedDate = date || document.getElementById("salesDate")?.value || getCurrentDate();
-  const formatDate = (dateStr) => dateStr.split("T")[0];
 
-  const sales = getSales().filter(s => formatDate(s.date) === formatDate(selectedDate));
+  const sales = getSales().filter(s =>
+    formatDateYMD(new Date(s.date)) === formatDateYMD(new Date(selectedDate))
+  );
 
   tbody.innerHTML = "";
 
@@ -97,7 +110,7 @@ export function loadSalesReport(date = null) {
   let totalProfit = 0;
 
   if (sales.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">No sales recorded for ${formatDate(selectedDate)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">No sales recorded for ${formatDateYMD(new Date(selectedDate))}</td></tr>`;
     return;
   }
 
@@ -111,7 +124,7 @@ export function loadSalesReport(date = null) {
       <td>Ksh ${sale.totalBuyingPrice.toFixed(2)}</td>
       <td>Ksh ${sale.totalSellingPrice.toFixed(2)}</td>
       <td>Ksh ${sale.profit.toFixed(2)}</td>
-      <td>${formatDate(sale.date)}</td>
+      <td>${formatDateYMD(new Date(sale.date))}</td>
     `;
     tbody.appendChild(row);
 
@@ -132,43 +145,65 @@ export function loadSalesReport(date = null) {
   tbody.appendChild(totalsRow);
 }
 
+
+
 // Delete selected sales (if less than 24 hrs old)
 export function deleteSelectedSales() {
   let sales = getSales();
+  const products = getProducts();
   const now = Date.now();
   const selected = document.querySelectorAll(".sale-checkbox:checked");
 
   if (selected.length === 0) {
-    alert("No sales selected.");
+    showError("No sales selected.");
     return;
   }
 
   if (!confirm("Are you sure you want to delete the selected sales?")) return;
 
   let deletedCount = 0;
+
   selected.forEach(checkbox => {
     const saleId = checkbox.getAttribute("data-id");
-    const index = sales.findIndex(s => String(s.saleId) === String(saleId));
+    const saleIndex = sales.findIndex(s => String(s.saleId) === String(saleId));
 
-    if (index !== -1) {
-      const sale = sales[index];
+    if (saleIndex !== -1) {
+      const sale = sales[saleIndex];
       const ageInHours = (now - sale.timestamp) / (1000 * 60 * 60);
 
       if (ageInHours <= 24) {
-        sales.splice(index, 1);
+        // Restore product stock
+        const product = products.find(p => p.productId === sale.productId);
+        if (product) {
+          product.stock += sale.quantity;
+
+          // Re-check if this product has other remaining sales
+          const hasOtherSales = sales.some((s, idx) =>
+            idx !== saleIndex && s.productId === product.productId
+          );
+
+          product.hasSale = hasOtherSales;
+        }
+
+        // Remove the sale
+        sales.splice(saleIndex, 1);
         deletedCount++;
       } else {
-        alert(`Sale "${sale.productName}" is older than 24 hours and cannot be deleted.`);
+        showError(`Sale "${sale.productName}" is older than 24 hours and cannot be deleted.`);
       }
     }
   });
 
   if (deletedCount > 0) {
     saveSales(sales);
+    saveProducts(products);
+
     const selectedDate = document.getElementById("salesDate")?.value || null;
     loadSalesReport(selectedDate);
     loadStock();
-    showToast(`🗑️ ${deletedCount} sale(s) deleted`);
+    showToast(`🗑️ ${deletedCount} sale(s) deleted and stock restored`);
+    refreshUI();
+    refreshReports();
   }
 }
 
